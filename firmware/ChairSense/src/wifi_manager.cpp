@@ -1,75 +1,113 @@
 #include "wifi_manager.h"
-
+#include "config.h"
 #include <ESP8266WiFi.h>
 
-#include "config.h"
+unsigned long WiFiManager::_lastReconnectAttempt = 0;
+bool WiFiManager::_isConnected = false;
 
-namespace
+void WiFiManager::init()
 {
-constexpr unsigned long WIFI_RECONNECT_INTERVAL_MS = 10000;
-constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 30000;
-unsigned long lastReconnectAttempt = 0;
+    Serial.println(F("[WiFi] Initializing WiFi Subsystem..."));
+    WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
+    WiFi.persistent(false); // Protect flash wear
+    WiFi.disconnect();
+    delay(100);
 }
 
-void connectWiFi()
+void WiFiManager::connectWiFi()
 {
-  Serial.println(F("[WiFi] Startup: configuring station mode"));
-  WiFi.mode(WIFI_STA);
-  WiFi.setAutoReconnect(true);
-  WiFi.persistent(false);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    Serial.printf("[WiFi] Connecting to SSID: %s\n", WIFI_SSID);
+    Serial.print(F("Connecting to WiFi"));
 
-  Serial.print(F("Connecting to WiFi"));
-  const unsigned long startedAt = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startedAt < WIFI_CONNECT_TIMEOUT_MS)
-  {
-    delay(500);
-    Serial.print('.');
-  }
-  Serial.println();
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    Serial.println(F("Connected!"));
-    Serial.print(F("IP Address: "));
-    Serial.println(getLocalIP());
-    Serial.print(F("[WiFi] IP acquisition complete; RSSI: "));
-    Serial.print(WiFi.RSSI());
-    Serial.println(F(" dBm"));
-    lastReconnectAttempt = millis();
-  }
-  else
-  {
-    Serial.print(F("[WiFi] Connection failure; status code: "));
-    Serial.println(static_cast<int>(WiFi.status()));
-    lastReconnectAttempt = millis();
-  }
+    const unsigned long startAttemptTime = millis();
+    while (WiFi.status() != WL_CONNECTED && (millis() - startAttemptTime < WIFI_CONNECT_TIMEOUT_MS))
+    {
+        digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
+        delay(500);
+        Serial.print('.');
+    }
+    Serial.println();
+
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        _onWiFiConnected();
+    }
+    else
+    {
+        _onWiFiDisconnected();
+    }
 }
 
-void maintainWiFi()
+void WiFiManager::_onWiFiConnected()
 {
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    return;
-  }
-
-  if (millis() - lastReconnectAttempt < WIFI_RECONNECT_INTERVAL_MS)
-  {
-    return;
-  }
-
-  Serial.println(F("[WiFi] Disconnected; attempting reconnection"));
-  lastReconnectAttempt = millis();
-  WiFi.disconnect();
-  connectWiFi();
+    _isConnected = true;
+    _lastReconnectAttempt = millis();
+    Serial.println(F("Connected"));
+    Serial.printf("IP Address: %s\n", getLocalIP().c_str());
+    Serial.printf("RSSI: %d dBm\n", getSignalStrength());
+    Serial.printf("[WiFi] Gateway: %s, Subnet: %s, DNS: %s\n", 
+                  WiFi.gatewayIP().toString().c_str(),
+                  WiFi.subnetMask().toString().c_str(),
+                  WiFi.dnsIP().toString().c_str());
 }
 
-String getLocalIP()
+void WiFiManager::_onWiFiDisconnected()
 {
-  return WiFi.localIP().toString();
+    _isConnected = false;
+    _lastReconnectAttempt = millis();
+    Serial.printf("[WiFi] Connection failed or dropped (Status: %d)\n", static_cast<int>(WiFi.status()));
 }
 
-bool isWiFiConnected()
+void WiFiManager::maintainWiFi()
 {
-  return WiFi.status() == WL_CONNECTED;
+    if (WiFi.status() == WL_CONNECTED)
+    {
+        if (!_isConnected)
+        {
+            _onWiFiConnected();
+        }
+        return;
+    }
+
+    if (_isConnected)
+    {
+        _isConnected = false;
+        Serial.println(F("[WiFi] Connection lost! Initiating auto-reconnect sequence..."));
+    }
+
+    if (millis() - _lastReconnectAttempt >= WIFI_RECONNECT_INTERVAL_MS)
+    {
+        _lastReconnectAttempt = millis();
+        Serial.println(F("[WiFi] Retrying WiFi connection..."));
+        WiFi.disconnect();
+        WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    }
+}
+
+bool WiFiManager::isWiFiConnected()
+{
+    return WiFi.status() == WL_CONNECTED;
+}
+
+int8_t WiFiManager::getSignalStrength()
+{
+    return isWiFiConnected() ? WiFi.RSSI() : -100;
+}
+
+String WiFiManager::getLocalIP()
+{
+    return isWiFiConnected() ? WiFi.localIP().toString() : "0.0.0.0";
+}
+
+String WiFiManager::getSSID()
+{
+    return isWiFiConnected() ? WiFi.SSID() : String(WIFI_SSID);
+}
+
+String WiFiManager::getMacAddress()
+{
+    return WiFi.macAddress();
 }
