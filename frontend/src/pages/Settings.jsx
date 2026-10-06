@@ -24,6 +24,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 import { settingsData } from '../services/mockData';
+import { api } from '../services/api';
 
 export const Settings = ({ isOnline = true, latency = 24 }) => {
   const [mqttConfig, setMqttConfig] = useState(settingsData.mqtt);
@@ -32,6 +33,34 @@ export const Settings = ({ isOnline = true, latency = 24 }) => {
 
   const [calibratingSensor, setCalibratingSensor] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
+
+  React.useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const [settings, mqttStatus] = await Promise.allSettled([
+          api.getSettings(),
+          api.getMqttStatus(),
+        ]);
+
+        if (settings.status === 'fulfilled' && settings.value) {
+          if (settings.value.mqtt) setMqttConfig(settings.value.mqtt);
+          if (settings.value.chair) setChairConfig(settings.value.chair);
+          if (settings.value.calibration) setCalib(settings.value.calibration);
+        }
+
+        if (mqttStatus.status === 'fulfilled' && mqttStatus.value) {
+          setMqttConfig((prev) => ({
+            ...prev,
+            brokerUrl: `mqtt://${mqttStatus.value.broker}:${mqttStatus.value.port}`,
+            topicRoot: mqttStatus.value.primaryTopic,
+          }));
+        }
+      } catch {
+        // Fallback
+      }
+    };
+    loadSettings();
+  }, []);
 
   const handleCalibrateSensor = (sensorKey, sensorName) => {
     setCalibratingSensor(sensorKey);

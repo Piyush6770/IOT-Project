@@ -39,7 +39,8 @@ constexpr char MQTT_REGISTRATION_TOPIC[] = "smartchair/chair001/registration";
 // ==============================================================================
 // Telemetry & Timing Configuration
 // ==============================================================================
-constexpr unsigned long TELEMETRY_INTERVAL_MS = 500; // Live MQTT telemetry rate (500ms)
+constexpr unsigned long TELEMETRY_INTERVAL_MS = 3000; // Live MQTT telemetry rate (3000ms)
+constexpr unsigned long SERIAL_LOG_INTERVAL_MS = 3000; // Serial monitor output interval (3000ms)
 constexpr unsigned long RSSI_LOG_INTERVAL_MS = 10000; // Periodic RSSI log interval
 
 // ==============================================================================

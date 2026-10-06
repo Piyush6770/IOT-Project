@@ -26,10 +26,42 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 
 import { adminData } from '../services/mockData';
+import { api } from '../services/api';
 
 export const AdminPanel = () => {
   const [chairs, setChairs] = useState(adminData.chairs);
   const [users, setUsers] = useState(adminData.users);
+  const [stats, setStats] = useState({
+    totalChairs: adminData.stats.totalChairs,
+    activeChairs: adminData.stats.activeChairs,
+    totalUsers: adminData.stats.totalUsers,
+    activeAlerts: adminData.stats.activeAlerts,
+  });
+
+  React.useEffect(() => {
+    const loadAdminFleet = async () => {
+      try {
+        const [adminStats, adminChairsList, adminUsersList] = await Promise.allSettled([
+          api.getAdminStats(),
+          api.getAdminChairs(),
+          api.getAdminUsers(),
+        ]);
+
+        if (adminStats.status === 'fulfilled' && adminStats.value) {
+          setStats(adminStats.value);
+        }
+        if (adminChairsList.status === 'fulfilled' && adminChairsList.value?.length > 0) {
+          setChairs(adminChairsList.value);
+        }
+        if (adminUsersList.status === 'fulfilled' && adminUsersList.value?.length > 0) {
+          setUsers(adminUsersList.value);
+        }
+      } catch {
+        // Fallback
+      }
+    };
+    loadAdminFleet();
+  }, []);
 
   return (
     <Box sx={{ flexGrow: 1 }}>

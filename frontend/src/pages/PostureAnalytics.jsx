@@ -28,6 +28,7 @@ import {
 } from 'recharts';
 
 import { postureDistribution, postureTimeline } from '../services/mockData';
+import { api } from '../services/api';
 import { useTheme } from '@mui/material/styles';
 
 const fintechPostureDistribution = [
@@ -40,7 +41,52 @@ const fintechPostureDistribution = [
 
 export const PostureAnalytics = () => {
   const theme = useTheme();
-  const postureQualityScore = 85;
+  const [timeline, setTimeline] = React.useState(postureTimeline);
+  const [distribution, setDistribution] = React.useState(fintechPostureDistribution);
+  const [postureQualityScore, setPostureQualityScore] = React.useState(85);
+
+  React.useEffect(() => {
+    const fetchPostureData = async () => {
+      try {
+        const history = await api.getPostureHistory('CHAIR001', 30);
+        if (history && history.length > 0) {
+          const counts = {};
+          history.forEach((h) => {
+            counts[h.posture_type] = (counts[h.posture_type] || 0) + 1;
+          });
+          const total = history.length;
+          const colors = {
+            'Correct': '#C6F26C',
+            'Slouching': '#FF5B6E',
+            'Left Lean': '#FFB020',
+            'Right Lean': '#9B7BFF',
+            'Forward Lean': '#4D9CFF',
+            'Chair Empty': '#64748B',
+          };
+          const dist = Object.entries(counts).map(([name, count]) => ({
+            name,
+            value: Math.round((count / total) * 100),
+            color: colors[name] || '#38BDF8',
+          }));
+          if (dist.length > 0) setDistribution(dist);
+
+          const correctCount = counts['Correct'] || 0;
+          setPostureQualityScore(Math.round((correctCount / total) * 100));
+
+          const mappedTimeline = history.slice(0, 10).map((h) => ({
+            time: new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            posture: h.posture_type,
+            duration: `${Math.round(h.confidence)}% conf`,
+            status: h.posture_type === 'Correct' ? 'optimal' : h.posture_type === 'Chair Empty' ? 'success' : 'warning',
+          }));
+          setTimeline(mappedTimeline);
+        }
+      } catch {
+        // Fallback to initial dataset
+      }
+    };
+    fetchPostureData();
+  }, []);
 
   return (
     <Box sx={{ flexGrow: 1 }}>

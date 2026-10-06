@@ -107,40 +107,52 @@ export const LiveMonitoring = ({
                 <Grid item xs={6}>
                   <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 3 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      P1 (FRONT LEFT)
+                      P1 / C0 (FRONT LEFT)
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: '#1FBE8C' }}>
                       {sensorData.p1}%
                     </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                      {sensorData.raw1 || 0} RAW ({sensorData.v1 || '0.00'}V)
+                    </Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={6}>
                   <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 3 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      P2 (FRONT RIGHT)
+                      P2 / C1 (FRONT RIGHT)
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: '#3B82F6' }}>
                       {sensorData.p2}%
                     </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                      {sensorData.raw2 || 0} RAW ({sensorData.v2 || '0.00'}V)
+                    </Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={6}>
                   <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 3 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      P3 (BACK LEFT)
+                      P3 / C2 (BACK LEFT)
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: '#F59E0B' }}>
                       {sensorData.p3}%
                     </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                      {sensorData.raw3 || 0} RAW ({sensorData.v3 || '0.00'}V)
+                    </Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={6}>
                   <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 3 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      P4 (BACK RIGHT)
+                      P4 / C3 (BACK RIGHT)
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: '#EF4444' }}>
                       {sensorData.p4}%
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                      {sensorData.raw4 || 0} RAW ({sensorData.v4 || '0.00'}V)
                     </Typography>
                   </Paper>
                 </Grid>
@@ -178,13 +190,13 @@ export const LiveMonitoring = ({
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                     <Box>
                       <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                        Real-Time Raw FSR Sensor Signals (P1 - P4)
+                        Real-Time Raw FSR Sensor Signals (Channels C0 - C3)
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        Continuous pressure values (0 - 100%) streamed over MQTT WebSocket
+                        Continuous pressure values (0 - 100%) streamed via MQTT & WebSocket
                       </Typography>
                     </Box>
-                    <Chip label="20 Data Points Buffer" size="small" variant="outlined" />
+                    <Chip label="Live 4-Ch MUX Buffer" size="small" variant="outlined" />
                   </Box>
 
                   <Box sx={{ width: '100%', height: 340 }}>
@@ -202,10 +214,10 @@ export const LiveMonitoring = ({
                           }}
                         />
                         <Legend wrapperStyle={{ paddingTop: 10 }} />
-                        <Line type="monotone" dataKey="p1" name="P1 (Front Left)" stroke="#1FBE8C" strokeWidth={2.5} dot={false} isAnimationActive={false} />
-                        <Line type="monotone" dataKey="p2" name="P2 (Front Right)" stroke="#3B82F6" strokeWidth={2.5} dot={false} isAnimationActive={false} />
-                        <Line type="monotone" dataKey="p3" name="P3 (Back Left)" stroke="#F59E0B" strokeWidth={2.5} dot={false} isAnimationActive={false} />
-                        <Line type="monotone" dataKey="p4" name="P4 (Back Right)" stroke="#EF4444" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                        <Line type="monotone" dataKey="p1" name="FSR 1 (C0 Front Left)" stroke="#1FBE8C" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                        <Line type="monotone" dataKey="p2" name="FSR 2 (C1 Front Right)" stroke="#3B82F6" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                        <Line type="monotone" dataKey="p3" name="FSR 3 (C2 Back Left)" stroke="#F59E0B" strokeWidth={2.5} dot={false} isAnimationActive={false} />
+                        <Line type="monotone" dataKey="p4" name="FSR 4 (C3 Back Right)" stroke="#EF4444" strokeWidth={2.5} dot={false} isAnimationActive={false} />
                       </LineChart>
                     </ResponsiveContainer>
                   </Box>
@@ -227,14 +239,14 @@ export const LiveMonitoring = ({
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                           <MemoryIcon color="primary" />
                           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                            MCU Core
+                            Hardware Architecture
                           </Typography>
                         </Box>
                         <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          ESP32 Dual-Core (240MHz)
+                          ESP8266 + CD74HC4067 MUX
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          Firmware: v2.4.1-build809
+                          Channels: C0, C1, C2, C3 Active
                         </Typography>
                       </Paper>
                     </Grid>
@@ -242,16 +254,16 @@ export const LiveMonitoring = ({
                     <Grid item xs={12} sm={4}>
                       <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <BatteryChargingFullIcon color="success" />
+                          <WifiIcon color="success" />
                           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                            Power & Battery
+                            MQTT Telemetry Broker
                           </Typography>
                         </Box>
                         <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          92% Charged (LiPo 3.7V)
+                          broker.emqx.io:1883
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          Est. Runtime: 18.4 Hours
+                          Topic: smartchair/chair001/sensors
                         </Typography>
                       </Paper>
                     </Grid>
@@ -259,16 +271,16 @@ export const LiveMonitoring = ({
                     <Grid item xs={12} sm={4}>
                       <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <SensorsIcon color="secondary" />
+                          <SensorsIcon color="info" />
                           <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                            Sampling Rate
+                            Chair Gateway ID
                           </Typography>
                         </Box>
                         <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          500 ms (2.0 Hz)
+                          {sensorData.deviceId || 'CHAIR001'}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          Last Sync: {sensorData.lastSync}
+                          Status: {isOnline ? 'Online (Real-Time)' : 'Offline'}
                         </Typography>
                       </Paper>
                     </Grid>

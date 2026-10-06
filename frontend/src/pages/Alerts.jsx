@@ -21,11 +21,36 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 
 import { alertsFeed } from '../services/mockData';
+import { api } from '../services/api';
 
 export const Alerts = () => {
   const [timeFilter, setTimeFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [alertsList, setAlertsList] = useState(alertsFeed);
+
+  React.useEffect(() => {
+    const fetchRealAlerts = async () => {
+      try {
+        const liveAlerts = await api.getAlerts('CHAIR001', 50);
+        if (liveAlerts && liveAlerts.length > 0) {
+          const mapped = liveAlerts.map((a) => ({
+            id: a.id || `ALT-${a.id}`,
+            title: a.alert_type || 'Ergonomic Warning',
+            description: a.message || 'Posture drift detected.',
+            severity: (a.alert_type && a.alert_type.toLowerCase().includes('high')) ? 'high' : 'medium',
+            timestamp: new Date(a.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            timeframe: 'today',
+            icon: a.alert_type && a.alert_type.includes('Sedentary') ? 'Timer' : 'Accessibility',
+            recommendation: 'Stand up and adjust seat position.',
+          }));
+          setAlertsList(mapped);
+        }
+      } catch {
+        // Fallback to mock feed
+      }
+    };
+    fetchRealAlerts();
+  }, []);
 
   const getAlertIcon = (iconName, severity) => {
     const color = severity === 'high' ? '#FF5B6E' : severity === 'medium' ? '#FFB020' : '#2FBFA0';
@@ -49,8 +74,15 @@ export const Alerts = () => {
     }
   };
 
-  const handleDismiss = (id) => {
+  const handleDismiss = async (id) => {
     setAlertsList((prev) => prev.filter((item) => item.id !== id));
+    if (typeof id === 'number') {
+      try {
+        await api.dismissAlerts([id]);
+      } catch {
+        // Ignored
+      }
+    }
   };
 
   const filteredAlerts = alertsList.filter((item) => {

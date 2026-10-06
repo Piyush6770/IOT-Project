@@ -18,9 +18,27 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 
+import { api } from '../services/api';
+
 export const Reports = () => {
   const [reportType, setReportType] = useState('Weekly'); // Daily, Weekly, Monthly
   const [toastMessage, setToastMessage] = useState('');
+  const [liveReport, setLiveReport] = useState(null);
+
+  React.useEffect(() => {
+    const fetchBackendReport = async () => {
+      try {
+        const periodKey = reportType.toLowerCase();
+        const data = await api.getReports(periodKey, 'CHAIR001');
+        if (data) {
+          setLiveReport(data);
+        }
+      } catch {
+        // Fallback
+      }
+    };
+    fetchBackendReport();
+  }, [reportType]);
 
   const reportMetrics = {
     Daily: { avgSitting: '6.2 hrs', avgSbi: 65, risk: 'Moderate Risk', breaks: '8 breaks', compliance: '85%' },

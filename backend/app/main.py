@@ -9,9 +9,38 @@ from app.mqtt.mqtt_subscriber import subscriber
 from app.websocket.routes import router as websocket_router
 
 
+from sqlalchemy import select
+from app.database.session import Base, engine, AsyncSessionLocal
+from app.models import User, Chair
+from app.core.security import hash_password
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
+    
+    # Ensure database schema is created
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # Seed default user and chair if not present
+    async with AsyncSessionLocal() as session:
+        user = await session.scalar(select(User).where(User.email == "alex.morgan@healthiot.org"))
+        if not user:
+            session.add(User(
+                name="Dr. Alex Morgan",
+                email="alex.morgan@healthiot.org",
+                password_hash=hash_password("smartchair2026"),
+                role="Admin",
+                age=32,
+                height=178,
+                weight=72,
+            ))
+        chair = await session.scalar(select(Chair).where(Chair.chair_code == "CHAIR001"))
+        if not chair:
+            session.add(Chair(chair_code="CHAIR001", status="online"))
+        await session.commit()
+
     await subscriber.start()
     yield
     await subscriber.stop()

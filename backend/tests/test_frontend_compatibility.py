@@ -41,7 +41,7 @@ class DummyRepo:
         ]
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_profile_update_service_returns_user_payload():
     service = FrontendCompatService(repo=DummyRepo())
     user = User(
@@ -62,7 +62,7 @@ async def test_profile_update_service_returns_user_payload():
     assert result.email == "old@example.com"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_admin_stats_are_built_from_repo_counts():
     service = FrontendCompatService(repo=DummyRepo())
 
@@ -76,7 +76,7 @@ async def test_admin_stats_are_built_from_repo_counts():
     assert result.activeAlerts == 5
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_settings_service_uses_frontend_shape():
     service = FrontendCompatService(repo=DummyRepo())
 

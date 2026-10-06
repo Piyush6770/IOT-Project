@@ -26,14 +26,33 @@ import {
 
 import { RiskGauge } from '../components/RiskGauge';
 import { weeklySittingData, sbiTrend7Days } from '../services/mockData';
+import { api } from '../services/api';
 import { useTheme } from '@mui/material/styles';
 
 export const SedentaryAnalytics = ({ currentSbi = 74 }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const [period, setPeriod] = useState('Weekly'); // 'Weekly' | 'Monthly'
+  const [sbiScore, setSbiScore] = useState(currentSbi);
+  const [sittingDuration, setSittingDuration] = useState(52);
+  const [breaksToday, setBreaksToday] = useState(8);
 
-  const breaksToday = 8;
+  React.useEffect(() => {
+    const fetchSedentaryData = async () => {
+      try {
+        const latest = await api.getCurrentSedentary('CHAIR001');
+        if (latest) {
+          if (latest.sedentary_index !== undefined) setSbiScore(Math.round(latest.sedentary_index));
+          if (latest.sitting_duration !== undefined) setSittingDuration(Math.round(latest.sitting_duration));
+          if (latest.break_count !== undefined) setBreaksToday(latest.break_count);
+        }
+      } catch {
+        // Fallback
+      }
+    };
+    fetchSedentaryData();
+  }, []);
+
   const breaksRecommended = 10;
   const breakPercentage = Math.min(100, Math.round((breaksToday / breaksRecommended) * 100));
 

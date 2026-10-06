@@ -75,7 +75,7 @@ String DeviceManager::getRegistrationPayload()
     doc["ipAddress"] = WiFiManager::getLocalIP();
     doc["firmwareVersion"] = FIRMWARE_VERSION;
     doc["multiplexer"] = "CD74HC4067 (16-Ch)";
-    doc["activeSensors"] = 2;
+    doc["activeSensors"] = 4;
     doc["status"] = "online";
 
     String output;
@@ -116,9 +116,25 @@ String DeviceManager::getTelemetryPayload(int fsr1, int fsr2, int fsr3, int fsr4
     doc["fsr2_percent"] = static_cast<int>((fsr2 * 100) / 1023);
     doc["fsr2_status"] = SensorManager::getPressureDescription(fsr2);
 
-    // Legacy backwards compatibility keys
+    // FSR 3 (Channel C2)
+    doc["fsr3_raw"] = fsr3;
+    doc["fsr3_voltage"] = static_cast<float>(fsr3 * 3.3f / 1023.0f);
+    doc["fsr3_percent"] = static_cast<int>((fsr3 * 100) / 1023);
+    doc["fsr3_status"] = SensorManager::getPressureDescription(fsr3);
+
+    // FSR 4 (Channel C3)
+    doc["fsr4_raw"] = fsr4;
+    doc["fsr4_voltage"] = static_cast<float>(fsr4 * 3.3f / 1023.0f);
+    doc["fsr4_percent"] = static_cast<int>((fsr4 * 100) / 1023);
+    doc["fsr4_status"] = SensorManager::getPressureDescription(fsr4);
+
+    // Standard multi-point pressure keys
     doc["pressure1"] = fsr1;
     doc["pressure2"] = fsr2;
+    doc["pressure3"] = fsr3;
+    doc["pressure4"] = fsr4;
+
+    // Legacy backwards compatibility keys
     doc["raw"] = fsr1;
     doc["voltage"] = static_cast<float>(fsr1 * 3.3f / 1023.0f);
     doc["load_percent"] = static_cast<int>((fsr1 * 100) / 1023);

@@ -34,6 +34,22 @@ export const UserProfile = () => {
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  React.useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+        age: user.age || prev.age,
+        weight: user.weight || prev.weight,
+        height: user.height || prev.height,
+        gender: user.gender || prev.gender,
+        dailyGoalHours: user.dailyGoalHours || prev.dailyGoalHours,
+        recommendedBreakIntervalMinutes: user.recommendedBreakIntervalMinutes || prev.recommendedBreakIntervalMinutes,
+      }));
+    }
+  }, [user]);
+
   const handleChange = (field) => (e) => {
     setFormData((prev) => ({
       ...prev,
