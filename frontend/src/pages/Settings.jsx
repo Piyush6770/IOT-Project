@@ -26,7 +26,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { settingsData } from '../services/mockData';
 import { api } from '../services/api';
 
-export const Settings = ({ isOnline = true, latency = 24 }) => {
+export const Settings = ({ isOnline = true, latency = 24, calibrateSensor, calibrateAll }) => {
   const [mqttConfig, setMqttConfig] = useState(settingsData.mqtt);
   const [chairConfig, setChairConfig] = useState(settingsData.chair);
   const [calib, setCalib] = useState(settingsData.calibration);
@@ -64,6 +64,9 @@ export const Settings = ({ isOnline = true, latency = 24 }) => {
 
   const handleCalibrateSensor = (sensorKey, sensorName) => {
     setCalibratingSensor(sensorKey);
+    if (calibrateSensor) {
+      calibrateSensor(sensorKey);
+    }
     setTimeout(() => {
       setCalibratingSensor(null);
       setCalib((prev) => ({
@@ -71,8 +74,8 @@ export const Settings = ({ isOnline = true, latency = 24 }) => {
         [`${sensorKey}Offset`]: 0.0,
         lastCalibrated: new Date().toLocaleTimeString(),
       }));
-      setToastMsg(`${sensorName} Tare Zero Calibration completed successfully! Baseline set to 0.0%`);
-    }, 1500);
+      setToastMsg(`${sensorName} Tare Zero Calibration completed successfully! Value zeroed to 0.0%`);
+    }, 800);
   };
 
   return (
@@ -84,7 +87,7 @@ export const Settings = ({ isOnline = true, latency = 24 }) => {
             System Settings & Hardware Calibration
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            MQTT Telemetry Broker Configuration, ESP32 Gateway & Individual FSR Tare Calibration
+            MQTT Telemetry Broker Configuration, ESP8266 Gateway & Individual FSR Tare Calibration
           </Typography>
         </Box>
       </Box>
@@ -219,7 +222,7 @@ export const Settings = ({ isOnline = true, latency = 24 }) => {
 
               <FormControlLabel
                 control={<Switch defaultChecked color="primary" />}
-                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Enable ESP32 Over-the-Air (OTA) Firmware Auto-Updates</Typography>}
+                label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Enable ESP8266 Over-the-Air (OTA) Firmware Auto-Updates</Typography>}
               />
               <FormControlLabel
                 control={<Switch defaultChecked color="primary" />}

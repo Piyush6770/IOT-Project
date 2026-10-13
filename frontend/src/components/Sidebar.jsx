@@ -163,7 +163,7 @@ export const Sidebar = ({ open, onClose, variant = 'permanent' }) => {
           Smart Chair IoT v2.4
         </Typography>
         <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-          ESP32 + FSR Sensors + MAX30102
+          ESP8266 + Quad FSR Sensors + MUX
         </Typography>
       </Box>
     </Box>

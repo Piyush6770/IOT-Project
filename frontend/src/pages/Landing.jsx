@@ -414,7 +414,7 @@ export const Landing = () => {
               mb: 4.5,
             }}
           >
-            Real-time 4-quadrant FSR pressure tracking, cardiovascular signals, and automated Sedentary Behaviour Index alerts — so your posture corrects itself.
+            Real-time 4-quadrant FSR pressure tracking, multiplexed sensor telemetry, and automated Sedentary Behaviour Index alerts — so your posture corrects itself.
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -665,10 +665,10 @@ export const Landing = () => {
               variant="h3"
               sx={{ fontWeight: 900, letterSpacing: '-0.025em', mb: 1.5 }}
             >
-              Built on Posture Science &amp; Cardiovascular Health
+              Built on Posture Science &amp; Ergonomic Health
             </Typography>
             <Typography sx={{ color: '#9A9AA5', fontSize: '1.05rem', maxWidth: 580, mx: 'auto' }}>
-              How embedded pressure sensors and physiological telemetry optimize seating ergonomics in real time.
+              How embedded pressure sensors and high-speed multiplexed telemetry optimize seating ergonomics in real time.
             </Typography>
           </Box>
 
@@ -686,14 +686,14 @@ export const Landing = () => {
                 color: '#9B7BFF',
                 bg: 'rgba(155,123,255,0.12)',
                 title: 'Sedentary Behaviour Index',
-                desc: 'Calculates a live health score from sitting duration, posture stability, and micro-break compliance to prevent vascular stagnation.',
+                desc: 'Calculates a live health score from sitting duration, posture stability, and micro-break compliance to prevent spinal stress.',
               },
               {
                 icon: HealthAndSafetyIcon,
                 color: '#2FBFA0',
                 bg: 'rgba(47,191,160,0.12)',
-                title: 'Physiological Telemetry',
-                desc: 'Integrates MAX30102 pulse sensing and thermistor skin temperature monitoring for holistic cardiovascular strain detection.',
+                title: 'ESP8266 + MUX Telemetry',
+                desc: '16-channel analog multiplexer sampling with smart settling delay and MQTT telemetry pipeline directly into your live dashboard.',
               },
             ].map((f) => (
               <Grid item xs={12} md={4} key={f.title}>

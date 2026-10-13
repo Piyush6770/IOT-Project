@@ -97,10 +97,12 @@ def main():
     print("#" * 110, flush=True)
     print(f"Connecting to broker: {BROKER_HOST}:{BROKER_PORT} ...", flush=True)
 
+    import uuid
+    unique_id = f"ChairSense-Monitor-{uuid.uuid4().hex[:8]}"
     try:
-        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="ChairSense-QuadSensor-Monitor")
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=unique_id)
     except (AttributeError, TypeError):
-        client = mqtt.Client(client_id="ChairSense-QuadSensor-Monitor")
+        client = mqtt.Client(client_id=unique_id)
 
     client.on_connect = on_connect
     client.on_message = on_message

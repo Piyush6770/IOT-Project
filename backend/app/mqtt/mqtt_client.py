@@ -8,7 +8,7 @@ import paho.mqtt.client as mqtt
 from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
-MessageHandler = Callable[[str], Awaitable[None]]
+MessageHandler = Callable[[str, str], Awaitable[None]]
 
 
 class MQTTClient:
@@ -35,8 +35,8 @@ class MQTTClient:
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0:
             self.is_connected = True
-            # Subscribe to configured topic and smartchair wildcard
-            topics = [(self.settings.mqtt_topic, 1), ("smartchair/#", 1)]
+            # Subscribe to configured topic, smartchair wildcard, and chairsense wildcard
+            topics = [(self.settings.mqtt_topic, 1), ("smartchair/#", 1), ("chairsense/#", 1)]
             client.subscribe(topics)
             logger.info("MQTT connected broker=%s topics=%s", self.settings.mqtt_broker, [t[0] for t in topics])
         else:
@@ -69,9 +69,11 @@ class MQTTClient:
                     "status": parsed.get("status", "online"),
                     "wifi": parsed.get("wifi", parsed.get("rssi")),
                     "rssi": parsed.get("rssi", parsed.get("wifi")),
-                    "ipAddress": parsed.get("ipAddress", self.devices[dev_key].get("ipAddress")),
+                    "ipAddress": parsed.get("ipAddress", parsed.get("ip", self.devices[dev_key].get("ipAddress"))),
                     "macAddress": parsed.get("macAddress", self.devices[dev_key].get("macAddress")),
-                    "firmwareVersion": parsed.get("firmwareVersion", self.devices[dev_key].get("firmwareVersion", "1.0.0")),
+                    "firmwareVersion": parsed.get("firmwareVersion", self.devices[dev_key].get("firmwareVersion", "1.1.0")),
+                    "uptime": parsed.get("uptime", self.devices[dev_key].get("uptime")),
+                    "heap": parsed.get("heap", parsed.get("freeHeap")),
                     "lastSeen": now_iso,
                     "lastTopic": message.topic
                 })
@@ -79,7 +81,7 @@ class MQTTClient:
             self.last_payload = {"raw": raw_text}
 
         if self.loop is not None:
-            asyncio.run_coroutine_threadsafe(self.handler(raw_text), self.loop)
+            asyncio.run_coroutine_threadsafe(self.handler(message.topic, raw_text), self.loop)
 
     async def start(self) -> None:
         self.loop = asyncio.get_running_loop()

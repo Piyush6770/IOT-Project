@@ -5,8 +5,6 @@ export const initialSensorData = {
   p2: 36, // Top-Right pressure %
   p3: 42, // Bottom-Left pressure %
   p4: 40, // Bottom-Right pressure %
-  heartRate: 74, // bpm
-  temperature: 36.6, // °C
   posture: 'Correct',
   confidence: 94.8,
   sittingDurationMinutes: 52,
@@ -141,13 +139,13 @@ export const settingsData = {
     qos: 1,
   },
   chair: {
-    id: 'ESP32-SC-9042',
-    model: 'SmartChair Pro v2.4',
-    firmware: 'v2.4.1-build809',
+    id: 'ESP8266-CHAIR001',
+    model: 'SmartChair Pro v2.4 (NodeMCU v3)',
+    firmware: 'v1.1.0',
     macAddress: '24:6F:28:B4:C9:10',
     batteryLevel: 92,
     isOnline: true,
-    sensorCount: 6, // 4 FSR, 1 HR MAX30102, 1 Temp
+    sensorCount: 4, // 4-Zone FSR Array with 16-Ch MUX
   },
   calibration: {
     p1Offset: 0.0,
@@ -168,16 +166,16 @@ export const adminData = {
     systemUptime: '99.94%',
   },
   chairs: [
-    { id: 'ESP32-SC-9042', location: 'Lab 3B - Desk 12', user: 'Dr. Alex Morgan', status: 'Online', battery: '92%', lastSeen: 'Just now' },
-    { id: 'ESP32-SC-9043', location: 'Lab 3B - Desk 14', user: 'Prof. Sarah Jenkins', status: 'Online', battery: '85%', lastSeen: '2 mins ago' },
-    { id: 'ESP32-SC-9044', location: 'Clinical Wing - Rm 102', user: 'Nurse David Kim', status: 'Online', battery: '98%', lastSeen: '1 min ago' },
-    { id: 'ESP32-SC-9045', location: 'Research Lab 1A', user: 'Elena Rostova', status: 'Offline', battery: '12%', lastSeen: '2 days ago' },
-    { id: 'ESP32-SC-9046', location: 'Ergonomics Test Bay', user: 'Unassigned', status: 'Idle', battery: '100%', lastSeen: '1 hour ago' },
+    { id: 'ESP8266-CHAIR001', location: 'Lab 3B - Desk 12', user: 'Dr. Alex Morgan', status: 'Online', battery: '92%', lastSeen: 'Just now' },
+    { id: 'ESP8266-CHAIR002', location: 'Lab 3B - Desk 14', user: 'Prof. Sarah Jenkins', status: 'Online', battery: '85%', lastSeen: '2 mins ago' },
+    { id: 'ESP8266-CHAIR003', location: 'Clinical Wing - Rm 102', user: 'Nurse David Kim', status: 'Online', battery: '98%', lastSeen: '1 min ago' },
+    { id: 'ESP8266-CHAIR004', location: 'Research Lab 1A', user: 'Elena Rostova', status: 'Offline', battery: '12%', lastSeen: '2 days ago' },
+    { id: 'ESP8266-CHAIR005', location: 'Ergonomics Test Bay', user: 'Unassigned', status: 'Idle', battery: '100%', lastSeen: '1 hour ago' },
   ],
   users: [
-    { id: 'USR-001', name: 'Dr. Alex Morgan', email: 'alex.morgan@healthiot.org', role: 'User', chairId: 'ESP32-SC-9042', status: 'Active' },
-    { id: 'USR-002', name: 'Prof. Sarah Jenkins', email: 's.jenkins@healthiot.org', role: 'Admin', chairId: 'ESP32-SC-9043', status: 'Active' },
-    { id: 'USR-003', name: 'Nurse David Kim', email: 'd.kim@healthiot.org', role: 'User', chairId: 'ESP32-SC-9044', status: 'Active' },
-    { id: 'USR-004', name: 'Elena Rostova', email: 'e.rostova@healthiot.org', role: 'Researcher', chairId: 'ESP32-SC-9045', status: 'Inactive' },
+    { id: 'USR-001', name: 'Dr. Alex Morgan', email: 'alex.morgan@healthiot.org', role: 'User', chairId: 'ESP8266-CHAIR001', status: 'Active' },
+    { id: 'USR-002', name: 'Prof. Sarah Jenkins', email: 's.jenkins@healthiot.org', role: 'Admin', chairId: 'ESP8266-CHAIR002', status: 'Active' },
+    { id: 'USR-003', name: 'Nurse David Kim', email: 'd.kim@healthiot.org', role: 'User', chairId: 'ESP8266-CHAIR003', status: 'Active' },
+    { id: 'USR-004', name: 'Elena Rostova', email: 'e.rostova@healthiot.org', role: 'Researcher', chairId: 'ESP8266-CHAIR004', status: 'Inactive' },
   ],
 };

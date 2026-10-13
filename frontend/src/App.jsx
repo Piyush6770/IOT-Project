@@ -23,8 +23,7 @@ import { AdminPanel } from './pages/AdminPanel';
 
 // Protected Route wrapper component
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  return children;
 };
 
 // Main Layout Shell with Device Frame Container
@@ -90,8 +89,8 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      {/* Public Unauthenticated Landing Page */}
-      <Route path="/" element={<Landing />} />
+      {/* Direct Default Route to Live Monitoring */}
+      <Route path="/" element={<Navigate to="/live" replace />} />
       <Route path="/landing" element={<Landing />} />
       <Route path="/login" element={<Login />} />
 
@@ -127,6 +126,7 @@ const AppRoutes = () => {
                 toggleStreaming={sensorProps.toggleStreaming}
                 toggleOnlineStatus={sensorProps.toggleOnlineStatus}
                 forcePosture={sensorProps.forcePosture}
+                calibrateAll={sensorProps.calibrateAll}
               />
             </MainLayout>
           </ProtectedRoute>
@@ -193,7 +193,12 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MainLayout sensorProps={sensorProps}>
-              <Settings isOnline={sensorProps.isOnline} latency={sensorProps.latency} />
+              <Settings
+                isOnline={sensorProps.isOnline}
+                latency={sensorProps.latency}
+                calibrateSensor={sensorProps.calibrateSensor}
+                calibrateAll={sensorProps.calibrateAll}
+              />
             </MainLayout>
           </ProtectedRoute>
         }

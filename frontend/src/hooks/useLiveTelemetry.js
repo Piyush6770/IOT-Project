@@ -44,9 +44,25 @@ const toVoltage = (val) => {
   return parseFloat(((val * 3.3) / 1023.0).toFixed(2));
 };
 
+// Load saved tare zero offsets from localStorage
+const getSavedOffsets = () => {
+  try {
+    const saved = localStorage.getItem('smartchair_tare_offsets');
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return { raw1: 0, raw2: 0, raw3: 0, raw4: 0 };
+};
+
 export const useLiveTelemetry = (chairId = 'CHAIR001') => {
+  const [offsets, setOffsets] = useState(getSavedOffsets);
+  const rawValuesRef = useRef({ raw1: 0, raw2: 0, raw3: 0, raw4: 0 });
+
   const [sensorData, setSensorData] = useState(() => ({
     ...initialSensorData,
+    p1: 0,
+    p2: 0,
+    p3: 0,
+    p4: 0,
     raw1: 0,
     raw2: 0,
     raw3: 0,
@@ -66,13 +82,11 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
       const time = new Date(now.getTime() - (15 - i) * 3000);
       return {
         time: time.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-        p1: 15,
-        p2: 15,
-        p3: 15,
-        p4: 15,
-        heartRate: 72,
-        temperature: 36.6,
-        posture: 'Correct',
+        p1: 0,
+        p2: 0,
+        p3: 0,
+        p4: 0,
+        posture: 'Chair Empty',
       };
     });
   });
@@ -87,6 +101,8 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
   const reconnectTimeoutRef = useRef(null);
   const pollIntervalRef = useRef(null);
   const lastPacketTimeRef = useRef(Date.now());
+  const offsetsRef = useRef(offsets);
+  offsetsRef.current = offsets;
 
   // Function to process incoming live payload (from WebSocket or REST poll)
   const processLiveReading = useCallback((data) => {
@@ -102,23 +118,39 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
     const p3Raw = sensor.pressure3 !== undefined ? sensor.pressure3 : (sensor.fsr3_raw || sensor.p3 || 0);
     const p4Raw = sensor.pressure4 !== undefined ? sensor.pressure4 : (sensor.fsr4_raw || sensor.p4 || 0);
 
-    const p1Pct = toPercent(p1Raw);
-    const p2Pct = toPercent(p2Raw);
-    const p3Pct = toPercent(p3Raw);
-    const p4Pct = toPercent(p4Raw);
+    rawValuesRef.current = { raw1: p1Raw, raw2: p2Raw, raw3: p3Raw, raw4: p4Raw };
 
-    const v1 = toVoltage(p1Raw);
-    const v2 = toVoltage(p2Raw);
-    const v3 = toVoltage(p3Raw);
-    const v4 = toVoltage(p4Raw);
+    // Apply Tare Zero Offsets
+    const curOffsets = offsetsRef.current;
+    const netRaw1 = Math.max(0, p1Raw - (curOffsets.raw1 || 0));
+    const netRaw2 = Math.max(0, p2Raw - (curOffsets.raw2 || 0));
+    const netRaw3 = Math.max(0, p3Raw - (curOffsets.raw3 || 0));
+    const netRaw4 = Math.max(0, p4Raw - (curOffsets.raw4 || 0));
 
-    const postureName = data.posture || classifyPostureLocal(p1Pct, p2Pct, p3Pct, p4Pct).name;
-    const confidence = data.confidence || 96.5;
+    // Threshold noise floor: raw values <= 5 after tare are treated as 0
+    const cleanRaw1 = netRaw1 <= 5 ? 0 : netRaw1;
+    const cleanRaw2 = netRaw2 <= 5 ? 0 : netRaw2;
+    const cleanRaw3 = netRaw3 <= 5 ? 0 : netRaw3;
+    const cleanRaw4 = netRaw4 <= 5 ? 0 : netRaw4;
+
+    const p1Pct = toPercent(cleanRaw1);
+    const p2Pct = toPercent(cleanRaw2);
+    const p3Pct = toPercent(cleanRaw3);
+    const p4Pct = toPercent(cleanRaw4);
+
+    const v1 = toVoltage(cleanRaw1);
+    const v2 = toVoltage(cleanRaw2);
+    const v3 = toVoltage(cleanRaw3);
+    const v4 = toVoltage(cleanRaw4);
+
+    const localPosture = classifyPostureLocal(p1Pct, p2Pct, p3Pct, p4Pct);
+    const postureName = (p1Pct === 0 && p2Pct === 0 && p3Pct === 0 && p4Pct === 0) 
+      ? 'Chair Empty' 
+      : (data.posture && data.posture !== 'No User' ? data.posture : localPosture.name);
+    
+    const confidence = data.confidence || localPosture.confidence || 96.5;
     const sbiScore = data.sbiScore !== undefined ? data.sbiScore : 74;
     const riskLevel = data.riskLevel || (sbiScore > 75 ? 'High' : sbiScore > 50 ? 'Moderate' : 'Low');
-
-    const heartRate = sensor.heartRate || sensor.heart_rate || 72;
-    const temperature = sensor.temperature || 36.6;
 
     const timeStr = new Date().toLocaleTimeString('en-US', {
       hour12: false,
@@ -133,8 +165,6 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
       p2: p2Pct,
       p3: p3Pct,
       p4: p4Pct,
-      heartRate,
-      temperature,
       posture: postureName,
     };
 
@@ -149,16 +179,14 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
       p2: p2Pct,
       p3: p3Pct,
       p4: p4Pct,
-      raw1: p1Raw,
-      raw2: p2Raw,
-      raw3: p3Raw,
-      raw4: p4Raw,
+      raw1: cleanRaw1,
+      raw2: cleanRaw2,
+      raw3: cleanRaw3,
+      raw4: cleanRaw4,
       v1,
       v2,
       v3,
       v4,
-      heartRate,
-      temperature,
       posture: postureName,
       confidence,
       sbiScore,
@@ -297,11 +325,79 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
     }
   };
 
-  const toggleOnlineStatus = () => setIsOnline((prev) => !prev);
+  const toggleOnlineStatus = useCallback(() => {
+    setIsOnline((prev) => !prev);
+  }, []);
+
+  // Calibration: Tare all 4 sensors to current baseline so all readings become 0
+  const calibrateAll = useCallback(() => {
+    const cur = rawValuesRef.current;
+    const newOffsets = {
+      raw1: cur.raw1 || 0,
+      raw2: cur.raw2 || 0,
+      raw3: cur.raw3 || 0,
+      raw4: cur.raw4 || 0,
+    };
+    setOffsets(newOffsets);
+    offsetsRef.current = newOffsets;
+    try {
+      localStorage.setItem('smartchair_tare_offsets', JSON.stringify(newOffsets));
+    } catch {}
+
+    // Immediately zero out the current state
+    const timeStr = new Date().toLocaleTimeString();
+    setSensorData((prev) => ({
+      ...prev,
+      p1: 0,
+      p2: 0,
+      p3: 0,
+      p4: 0,
+      raw1: 0,
+      raw2: 0,
+      raw3: 0,
+      raw4: 0,
+      v1: 0.0,
+      v2: 0.0,
+      v3: 0.0,
+      v4: 0.0,
+      posture: 'Chair Empty',
+      confidence: 99.1,
+      lastSync: timeStr,
+    }));
+  }, []);
+
+  // Calibration: Tare individual sensor by key (e.g. 'p1', 'p2', 'p3', 'p4' or 'raw1', 'raw2'...)
+  const calibrateSensor = useCallback((sensorKey) => {
+    const rawKey = sensorKey.startsWith('p') ? `raw${sensorKey.slice(1)}` : sensorKey;
+    const currentRaw = rawValuesRef.current[rawKey] || 0;
+
+    setOffsets((prev) => {
+      const next = { ...prev, [rawKey]: currentRaw };
+      offsetsRef.current = next;
+      try {
+        localStorage.setItem('smartchair_tare_offsets', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    // Zero out that specific sensor in UI
+    const pctKey = sensorKey.startsWith('raw') ? `p${sensorKey.slice(3)}` : sensorKey;
+    const vKey = `v${pctKey.slice(1)}`;
+    const rKey = `raw${pctKey.slice(1)}`;
+
+    setSensorData((prev) => ({
+      ...prev,
+      [pctKey]: 0,
+      [rKey]: 0,
+      [vKey]: 0.0,
+      lastSync: new Date().toLocaleTimeString(),
+    }));
+  }, []);
 
   return {
     sensorData,
     history,
+    offsets,
     isStreaming,
     isOnline,
     isHardwareConnected,
@@ -310,6 +406,8 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
     toggleStreaming,
     toggleOnlineStatus,
     forcePosture,
+    calibrateAll,
+    calibrateSensor,
   };
 };
 

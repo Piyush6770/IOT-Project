@@ -45,7 +45,7 @@ export const AboutModal = ({ open, onClose }) => {
         </Typography>
 
         <Typography variant="body2" sx={{ color: 'text.secondary', paragraph: true, leading: 1.6 }}>
-          This system is an advanced IoT-enabled ergonomic healthcare platform designed to continuously analyze seating posture, detect sedentary risks, and promote vascular and spinal health. Embedded multi-point Force Sensitive Resistors (FSR), optical photoplethysmography (MAX30102), and precision thermal sensors stream live physiological metrics to a cloud telemetry pipeline.
+          This system is an advanced IoT-enabled ergonomic platform designed to continuously analyze seating posture, detect sedentary risks, and promote spinal wellness. Embedded multi-point Force Sensitive Resistors (FSR) with analog multiplexing (CD74HC4067) stream live telemetry directly to an MQTT pipeline and real-time dashboard.
         </Typography>
 
         <Typography variant="h6" sx={{ fontWeight: 700, mt: 3, mb: 2 }}>
@@ -61,7 +61,7 @@ export const AboutModal = ({ open, onClose }) => {
                   FSR Pressure Sensors
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  4-Zone Quadrant Array (P1-P4) measuring weight distribution & pelvic tilt angles.
+                  4-Zone Quadrant Array (P1-P4) measuring weight distribution & pelvic balance.
                 </Typography>
               </CardContent>
             </Card>
@@ -72,10 +72,10 @@ export const AboutModal = ({ open, onClose }) => {
               <CardContent>
                 <CpuIcon sx={{ color: 'secondary.main', mb: 1 }} />
                 <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                  ESP32 Microcontroller
+                  ESP8266 NodeMCU v3
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  Dual-core Wi-Fi/Bluetooth MCU with onboard ADC and MQTT telemetry client.
+                  Wi-Fi IoT MCU with non-blocking state machines and MQTT telemetry client.
                 </Typography>
               </CardContent>
             </Card>
@@ -86,10 +86,10 @@ export const AboutModal = ({ open, onClose }) => {
               <CardContent>
                 <HealthAndSafetyIcon sx={{ color: 'warning.main', mb: 1 }} />
                 <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                  MAX30102 & Temp
+                  CD74HC4067 Multiplexer
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  Pulse oximetry heart rate sensor & precision skin temperature monitoring.
+                  16-Channel Analog MUX with sample-and-hold averaging and settling delay.
                 </Typography>
               </CardContent>
             </Card>
@@ -100,10 +100,10 @@ export const AboutModal = ({ open, onClose }) => {
               <CardContent>
                 <CloudIcon sx={{ color: '#8B5CF6', mb: 1 }} />
                 <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                  Cloud & Analytics
+                  FastAPI & WebSocket
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.5 }}>
-                  Java Spring Boot REST API, Supabase PostgreSQL, and live WebSocket engine.
+                  Async Python backend, MQTT subscriber, and live WebSocket broadcast engine.
                 </Typography>
               </CardContent>
             </Card>

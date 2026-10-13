@@ -9,10 +9,9 @@ void WiFiManager::init()
 {
     Serial.println(F("[WiFi] Initializing WiFi Subsystem..."));
     WiFi.mode(WIFI_STA);
+    WiFi.setSleepMode(WIFI_NONE_SLEEP); // Maintain full RF power on powerbank
     WiFi.setAutoReconnect(true);
-    WiFi.persistent(false); // Protect flash wear
-    WiFi.disconnect();
-    delay(100);
+    delay(50);
 }
 
 void WiFiManager::connectWiFi()
@@ -26,7 +25,7 @@ void WiFiManager::connectWiFi()
     while (WiFi.status() != WL_CONNECTED && (millis() - startAttemptTime < WIFI_CONNECT_TIMEOUT_MS))
     {
         digitalWrite(STATUS_LED_PIN, !digitalRead(STATUS_LED_PIN));
-        delay(500);
+        delay(300);
         Serial.print('.');
     }
     Serial.println();
@@ -45,9 +44,9 @@ void WiFiManager::_onWiFiConnected()
 {
     _isConnected = true;
     _lastReconnectAttempt = millis();
-    Serial.println(F("Connected"));
-    Serial.printf("IP Address: %s\n", getLocalIP().c_str());
-    Serial.printf("RSSI: %d dBm\n", getSignalStrength());
+    Serial.println(F("\n[WiFi] >>> Connected to WiFi!"));
+    Serial.printf("[WiFi] IP Address: %s\n", getLocalIP().c_str());
+    Serial.printf("[WiFi] RSSI: %d dBm\n", getSignalStrength());
     Serial.printf("[WiFi] Gateway: %s, Subnet: %s, DNS: %s\n", 
                   WiFi.gatewayIP().toString().c_str(),
                   WiFi.subnetMask().toString().c_str(),
@@ -58,7 +57,7 @@ void WiFiManager::_onWiFiDisconnected()
 {
     _isConnected = false;
     _lastReconnectAttempt = millis();
-    Serial.printf("[WiFi] Connection failed or dropped (Status: %d)\n", static_cast<int>(WiFi.status()));
+    Serial.printf("[WiFi] Connection attempt failed (Status code: %d)\n", static_cast<int>(WiFi.status()));
 }
 
 void WiFiManager::maintainWiFi()
@@ -75,14 +74,15 @@ void WiFiManager::maintainWiFi()
     if (_isConnected)
     {
         _isConnected = false;
-        Serial.println(F("[WiFi] Connection lost! Initiating auto-reconnect sequence..."));
+        Serial.println(F("[WiFi] Connection lost! Waiting to reconnect..."));
+        _lastReconnectAttempt = millis();
     }
 
-    if (millis() - _lastReconnectAttempt >= WIFI_RECONNECT_INTERVAL_MS)
+    // Allow at least 15 seconds for background auto-reconnect before triggering WiFi.begin again
+    if (millis() - _lastReconnectAttempt >= 15000)
     {
         _lastReconnectAttempt = millis();
         Serial.println(F("[WiFi] Retrying WiFi connection..."));
-        WiFi.disconnect();
         WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     }
 }

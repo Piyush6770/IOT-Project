@@ -198,7 +198,7 @@ export const Login = () => {
 
           <Box sx={{ mt: 3, pt: 2, borderTop: (theme) => `1px solid ${theme.palette.divider}`, textAlign: 'center' }}>
             <Typography variant="caption" color="text.secondary">
-              Demo Credentials Pre-filled • ESP32 Smart Chair IoT Platform
+              Demo Credentials Pre-filled • ESP8266 Smart Chair IoT Platform
             </Typography>
           </Box>
         </CardContent>

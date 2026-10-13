@@ -181,7 +181,7 @@ export const SedentaryAnalytics = ({ currentSbi = 74 }) => {
                     Sitting Duration Flow
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    Total daily sedentary hours logged by ESP32 FSR sensors
+                    Total daily sedentary hours logged by ESP8266 FSR sensors
                   </Typography>
                 </Box>
 

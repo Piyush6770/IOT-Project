@@ -33,6 +33,7 @@ import {
 
 import { ChairHeatmap } from '../components/ChairHeatmap';
 import { useTheme } from '@mui/material/styles';
+import { Snackbar, Alert } from '@mui/material';
 
 export const LiveMonitoring = ({
   sensorData,
@@ -43,9 +44,18 @@ export const LiveMonitoring = ({
   toggleStreaming,
   toggleOnlineStatus,
   forcePosture,
+  calibrateAll,
 }) => {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const [calibToast, setCalibToast] = React.useState(false);
+
+  const handleForceZero = () => {
+    if (calibrateAll) {
+      calibrateAll();
+    }
+    setCalibToast(true);
+  };
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -56,14 +66,14 @@ export const LiveMonitoring = ({
             Live Chair FSR Monitoring
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            High-Frequency Pressure Sensor Telemetry & ESP32 Microcontroller Status
+            High-Frequency Pressure Sensor Telemetry & ESP8266 Microcontroller Status
           </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
           <Chip
             icon={<WifiIcon />}
-            label={isOnline ? `ESP32 ONLINE (${latency}ms)` : 'ESP32 DISCONNECTED'}
+            label={isOnline ? `ESP8266 ONLINE (${latency}ms)` : 'ESP8266 DISCONNECTED'}
             color={isOnline ? 'success' : 'error'}
             sx={{ fontWeight: 700 }}
           />
@@ -291,7 +301,7 @@ export const LiveMonitoring = ({
                       control={<Switch checked={isOnline} onChange={toggleOnlineStatus} color="primary" />}
                       label={<Typography variant="body2" sx={{ fontWeight: 600 }}>Simulate Hardware Disconnection</Typography>}
                     />
-                    <Button variant="text" startIcon={<RefreshIcon />} size="small">
+                    <Button variant="outlined" color="primary" startIcon={<RefreshIcon />} size="small" onClick={handleForceZero} sx={{ fontWeight: 700 }}>
                       Force Zero Calibration
                     </Button>
                   </Box>
@@ -301,6 +311,13 @@ export const LiveMonitoring = ({
           </Grid>
         </Grid>
       </Grid>
+
+      {/* Calibration Toast */}
+      <Snackbar open={calibToast} autoHideDuration={3500} onClose={() => setCalibToast(false)}>
+        <Alert severity="success" sx={{ width: '100%', borderRadius: 2, fontWeight: 700 }}>
+          ✓ Tare Zero Calibration Complete: All 4 FSR Sensors Zeroed to 0.0% &amp; Baseline Saved!
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

@@ -22,8 +22,6 @@ import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 import SpeedIcon from '@mui/icons-material/Speed';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import ThermostatIcon from '@mui/icons-material/Thermostat';
 import SensorsIcon from '@mui/icons-material/Sensors';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
@@ -252,18 +250,18 @@ export const Dashboard = ({ sensorData, history, isStreaming, toggleStreaming, f
                 {getPosturePill(sensorData.posture)}
               </Box>
 
-              {/* Heart Rate & Temp Sub-Cards */}
+              {/* FSR Balance Breakdown Sub-Cards */}
               <Grid container spacing={2} sx={{ my: 2 }}>
                 <Grid item xs={6}>
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <FavoriteIcon sx={{ color: '#FF5B6E', fontSize: 28 }} />
+                      <SensorsIcon sx={{ color: '#C6F26C', fontSize: 28 }} />
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>
-                          HEART RATE (MAX30102)
+                          FRONT QUADRANTS (P1 + P2)
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 900, color: 'text.primary' }}>
-                          {sensorData.heartRate} <span style={{ fontSize: 13, color: '#9A9AA5' }}>bpm</span>
+                          {Math.round(((sensorData.p1 + sensorData.p2) / 2))}% <span style={{ fontSize: 13, color: '#9A9AA5' }}>avg load</span>
                         </Typography>
                       </Box>
                     </Box>
@@ -273,13 +271,13 @@ export const Dashboard = ({ sensorData, history, isStreaming, toggleStreaming, f
                 <Grid item xs={6}>
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                      <ThermostatIcon sx={{ color: '#FFB020', fontSize: 28 }} />
+                      <SensorsIcon sx={{ color: '#9B7BFF', fontSize: 28 }} />
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>
-                          SKIN TEMPERATURE
+                          REAR QUADRANTS (P3 + P4)
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 900, color: 'text.primary' }}>
-                          {sensorData.temperature} <span style={{ fontSize: 13, color: '#9A9AA5' }}>°C</span>
+                          {Math.round(((sensorData.p3 + sensorData.p4) / 2))}% <span style={{ fontSize: 13, color: '#9A9AA5' }}>avg load</span>
                         </Typography>
                       </Box>
                     </Box>
@@ -346,8 +344,7 @@ export const Dashboard = ({ sensorData, history, isStreaming, toggleStreaming, f
                   <TableCell align="center">P2 (FR %)</TableCell>
                   <TableCell align="center">P3 (BL %)</TableCell>
                   <TableCell align="center">P4 (BR %)</TableCell>
-                  <TableCell align="center">HEART RATE</TableCell>
-                  <TableCell align="center">TEMP</TableCell>
+                  <TableCell align="center">RAW CHANNELS (C0-C3)</TableCell>
                   <TableCell align="right">CLASSIFIED POSTURE</TableCell>
                 </TableRow>
               </TableHead>
@@ -374,8 +371,9 @@ export const Dashboard = ({ sensorData, history, isStreaming, toggleStreaming, f
                     <TableCell align="center" sx={{ fontWeight: 800, color: row.p4 > 70 ? '#FF5B6E' : 'text.primary' }}>
                       {row.p4}%
                     </TableCell>
-                    <TableCell align="center">{row.heartRate} bpm</TableCell>
-                    <TableCell align="center">{row.temperature} °C</TableCell>
+                    <TableCell align="center" sx={{ fontFamily: 'monospace', fontSize: 12 }}>
+                      {row.p1 > 0 || row.p2 > 0 || row.p3 > 0 || row.p4 > 0 ? 'MUX Active' : 'Idle'}
+                    </TableCell>
                     <TableCell align="right">{getPosturePill(row.posture)}</TableCell>
                   </TableRow>
                 ))}
