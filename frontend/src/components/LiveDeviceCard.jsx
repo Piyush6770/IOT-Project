@@ -1,13 +1,11 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box, Chip, Tooltip, LinearProgress } from '@mui/material';
+import { Card, CardContent, Typography, Box, Chip, LinearProgress } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
-import RouterIcon from '@mui/icons-material/Router';
 import MemoryIcon from '@mui/icons-material/Memory';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
+import ErrorOutlineIcon from '@mui/icons-material/Error';
 
 /**
  * LiveDeviceCard - Displays real-time hardware status, WiFi RSSI, and MQTT connectivity
@@ -18,7 +16,7 @@ export const LiveDeviceCard = ({
   status = 'ONLINE', // 'ONLINE', 'OFFLINE', 'DISCONNECTED'
   wifiRssi = -45,
   ipAddress = '192.168.1.100',
-  macAddress = 'CC:50:E3:XX:XX:XX',
+  _macAddress = 'CC:50:E3:XX:XX:XX',
   firmwareVersion = '1.0.0',
   lastSeen = 'Just now',
   brokerHost = 'broker.emqx.io',

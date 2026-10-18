@@ -19,6 +19,110 @@ unsigned long lastLedToggle = 0;
 unsigned long lastSerialLog = 0;
 bool ledState = false;
 
+// Alert Feedback Subsystem (ALERT_OFF, Green = Sitting < 10s, Red = Sitting >= 10s, Blue = Boot Diagnostic)
+enum AlertState { ALERT_OFF, ALERT_NORMAL, ALERT_APPROACHING, ALERT_BREAK_REQUIRED, ALERT_DIAGNOSTIC };
+AlertState currentAlert = ALERT_OFF;
+unsigned long buzzerStopAt = 0;
+
+// Occupancy Tracking for RGB LED Alert Subsystem
+unsigned long occupancyStartTime = 0;
+bool wasOccupied = false;
+bool redAlertFired = false;
+
+void setAlertFeedback(AlertState state)
+{
+    currentAlert = state;
+    if (RGB_LED_ENABLED)
+    {
+        switch (state)
+        {
+            case ALERT_OFF: // All OFF
+                digitalWrite(LED_RED_PIN, LOW);
+                digitalWrite(LED_GREEN_PIN, LOW);
+                digitalWrite(LED_BLUE_PIN, LOW);
+                break;
+            case ALERT_NORMAL: // Green (Person seated < 10 seconds)
+                digitalWrite(LED_RED_PIN, LOW);
+                digitalWrite(LED_GREEN_PIN, HIGH);
+                digitalWrite(LED_BLUE_PIN, LOW);
+                break;
+            case ALERT_APPROACHING: // Yellow (Red + Green)
+                digitalWrite(LED_RED_PIN, HIGH);
+                digitalWrite(LED_GREEN_PIN, HIGH);
+                digitalWrite(LED_BLUE_PIN, LOW);
+                break;
+            case ALERT_BREAK_REQUIRED: // Red (Person seated >= 10 seconds)
+                digitalWrite(LED_RED_PIN, HIGH);
+                digitalWrite(LED_GREEN_PIN, LOW);
+                digitalWrite(LED_BLUE_PIN, LOW);
+                if (BUZZER_ENABLED)
+                {
+                    digitalWrite(BUZZER_PIN, HIGH);
+                    buzzerStopAt = millis() + 120; // Non-blocking 120ms chirp
+                }
+                break;
+            case ALERT_DIAGNOSTIC: // Blue (Boot self-test)
+                digitalWrite(LED_RED_PIN, LOW);
+                digitalWrite(LED_GREEN_PIN, LOW);
+                digitalWrite(LED_BLUE_PIN, HIGH);
+                break;
+        }
+    }
+}
+
+void updateOccupancyRgbState(bool isOccupied)
+{
+    if (!RGB_LED_ENABLED) return;
+
+    if (isOccupied)
+    {
+        if (!wasOccupied)
+        {
+            wasOccupied = true;
+            redAlertFired = false;
+            occupancyStartTime = millis();
+            setAlertFeedback(ALERT_NORMAL); // GREEN ON
+            Serial.println(F("[RGB ALERT] Person seated on chair -> GREEN light ON (10-second timer started)"));
+        }
+        else
+        {
+            // Continuous sitting
+            unsigned long durationSitting = millis() - occupancyStartTime;
+            if (durationSitting >= OCCUPANCY_ALERT_DELAY_MS)
+            {
+                if (!redAlertFired)
+                {
+                    redAlertFired = true;
+                    setAlertFeedback(ALERT_BREAK_REQUIRED); // RED ON
+                    Serial.println(F("[RGB ALERT] 10 seconds continuous sitting reached -> RED light ON!"));
+                }
+            }
+            else
+            {
+                if (currentAlert != ALERT_NORMAL)
+                {
+                    setAlertFeedback(ALERT_NORMAL);
+                }
+            }
+        }
+    }
+    else
+    {
+        if (wasOccupied)
+        {
+            wasOccupied = false;
+            occupancyStartTime = 0;
+            redAlertFired = false;
+            setAlertFeedback(ALERT_OFF); // Turn OFF
+            Serial.println(F("[RGB ALERT] Chair vacated (empty) -> RGB light OFF (Timer reset)"));
+        }
+        else if (currentAlert != ALERT_OFF && currentAlert != ALERT_DIAGNOSTIC)
+        {
+            setAlertFeedback(ALERT_OFF);
+        }
+    }
+}
+
 // ==============================================================================
 // Command & MQTT Callback Handler
 // ==============================================================================
@@ -40,6 +144,14 @@ void handleCommand(const char* topic, const uint8_t* payload, unsigned int lengt
             Serial.println(F("[Command] Reboot command triggered. Restarting..."));
             delay(500);
             ESP.restart();
+        }
+        if (doc["alert"].is<const char*>())
+        {
+            const char* alertType = doc["alert"];
+            if (strcmp(alertType, "break_required") == 0) setAlertFeedback(ALERT_BREAK_REQUIRED);
+            else if (strcmp(alertType, "approaching") == 0) setAlertFeedback(ALERT_APPROACHING);
+            else if (strcmp(alertType, "normal") == 0) setAlertFeedback(ALERT_NORMAL);
+            else if (strcmp(alertType, "diagnostic") == 0) setAlertFeedback(ALERT_DIAGNOSTIC);
         }
     }
 }
@@ -119,11 +231,23 @@ void handleHttpSensor()
     SensorManager::readAllSensors(s1, s2, s3, s4);
 
     String response = DeviceManager::getTelemetryPayload(s1, s2, s3, s4);
+    httpServer.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+    httpServer.sendHeader(F("Access-Control-Allow-Methods"), F("GET, OPTIONS"));
+    httpServer.sendHeader(F("Access-Control-Allow-Headers"), F("*"));
     httpServer.send(200, F("application/json"), response);
+}
+
+void handleHttpSensorOptions()
+{
+    httpServer.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
+    httpServer.sendHeader(F("Access-Control-Allow-Methods"), F("GET, OPTIONS"));
+    httpServer.sendHeader(F("Access-Control-Allow-Headers"), F("*"));
+    httpServer.send(204);
 }
 
 void handleHttpHealth()
 {
+    httpServer.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
     httpServer.send(200, F("application/json"), F("{\"health\":\"ok\"}"));
 }
 
@@ -132,10 +256,14 @@ void handleHttpWifi()
     JsonDocument doc;
     doc["ssid"] = WiFiManager::getSSID();
     doc["ip"] = WiFiManager::getLocalIP();
+    doc["ap_ssid"] = WiFiManager::getAPSSID();
+    doc["ap_ip"] = WiFiManager::getAPIP();
+    doc["ap_active"] = WiFiManager::isAPActive();
     doc["rssi"] = String(WiFiManager::getSignalStrength());
 
     String response;
     serializeJson(doc, response);
+    httpServer.sendHeader(F("Access-Control-Allow-Origin"), F("*"));
     httpServer.send(200, F("application/json"), response);
 }
 
@@ -160,34 +288,60 @@ void setup()
     // 2. Hardware Diagnostics
     DeviceManager::init();
 
-    // 3. Status LED Setup
-    pinMode(STATUS_LED_PIN, OUTPUT);
-    digitalWrite(STATUS_LED_PIN, HIGH);
+    // 3. Status LED & Alert Actuators Setup
+    if (!RGB_LED_ENABLED)
+    {
+        pinMode(STATUS_LED_PIN, OUTPUT);
+        digitalWrite(STATUS_LED_PIN, HIGH);
+    }
 
-    // 4. Initialize Subsystems
+    if (BUZZER_ENABLED)
+    {
+        pinMode(BUZZER_PIN, OUTPUT);
+        digitalWrite(BUZZER_PIN, LOW);
+    }
+
+    if (RGB_LED_ENABLED)
+    {
+        pinMode(LED_RED_PIN, OUTPUT);
+        pinMode(LED_GREEN_PIN, OUTPUT);
+        pinMode(LED_BLUE_PIN, OUTPUT);
+        // Self-test diagnostic pulse: Blue for 350ms, then OFF ready for sitting
+        setAlertFeedback(ALERT_DIAGNOSTIC);
+        delay(350);
+        setAlertFeedback(ALERT_OFF);
+    }
+
+    // 4. Initialize Subsystems (Starts WiFi Hotspot AP & Station)
     SensorManager::init();
     WiFiManager::init();
 
-    // 5. Connect WiFi
+    // 5. Connect WiFi to configured Station (optional, runs in parallel with Hotspot)
     WiFiManager::connectWiFi();
 
-    // 6. Setup HTTP Local Web Dashboard
+    // 6. Setup HTTP Local Web Dashboard & CORS API
     httpServer.on(F("/"), HTTP_GET, handleHttpRoot);
     httpServer.on(F("/sensor"), HTTP_GET, handleHttpSensor);
+    httpServer.on(F("/sensor"), HTTP_OPTIONS, handleHttpSensorOptions);
     httpServer.on(F("/health"), HTTP_GET, handleHttpHealth);
     httpServer.on(F("/wifi"), HTTP_GET, handleHttpWifi);
     httpServer.onNotFound(handleHttpNotFound);
     httpServer.begin();
-    Serial.println(F("[HTTP] Web Dashboard running on port 80"));
+    Serial.println(F("[HTTP] Web Dashboard & Sensor API running on port 80"));
 
+    Serial.println(F("\n========================================================"));
+    if (WiFiManager::isAPActive())
+    {
+        Serial.println(F(" >>> ESP8266 WiFi Hotspot (AP Mode) Active!"));
+        Serial.printf( " >>> Connect Laptop WiFi to : %s (Password: %s)\n", WIFI_AP_SSID, WIFI_AP_PASSWORD);
+        Serial.printf( " >>> ESP8266 Hotspot IP    : %s\n", WiFiManager::getAPIP().c_str());
+        Serial.printf( " >>> Local Live Sensor API : http://%s/sensor\n", WiFiManager::getAPIP().c_str());
+    }
     if (WiFiManager::isWiFiConnected())
     {
-        Serial.println(F("\n========================================================"));
-        Serial.println(F(" >>> WiFi Connected to: Samsung F23"));
-        Serial.printf( " >>> Local Dashboard URL: http://%s/\n", WiFiManager::getLocalIP().c_str());
-        Serial.printf( " >>> Live JSON Stream   : http://%s/sensor\n", WiFiManager::getLocalIP().c_str());
-        Serial.println(F("========================================================\n"));
+        Serial.printf( " >>> WiFi Station Connected: %s (IP: %s)\n", WiFiManager::getSSID().c_str(), WiFiManager::getLocalIP().c_str());
     }
+    Serial.println(F("========================================================\n"));
 
     // 7. Initialize MQTT Subsystem
     MQTTManager::init(handleCommand);
@@ -201,12 +355,33 @@ void setup()
 
 void loop()
 {
+    // 0. Non-blocking Buzzer Timer
+    if (BUZZER_ENABLED && buzzerStopAt > 0 && millis() >= buzzerStopAt)
+    {
+        digitalWrite(BUZZER_PIN, LOW);
+        buzzerStopAt = 0;
+    }
+
     // 1. Maintain WiFi & MQTT
     WiFiManager::maintainWiFi();
     MQTTManager::maintainMQTT();
 
     // 2. Handle HTTP clients
     httpServer.handleClient();
+
+    // 2.1 Real-time Occupancy & 10-Second RGB Alert (Checks every 100ms)
+    static unsigned long lastOccupancyPoll = 0;
+    if (millis() - lastOccupancyPoll >= 100)
+    {
+        lastOccupancyPoll = millis();
+        int o1 = 0, o2 = 0, o3 = 0, o4 = 0;
+        SensorManager::readAllSensors(o1, o2, o3, o4);
+        bool isOccupied = (o1 >= OCCUPANCY_RAW_THRESHOLD || 
+                           o2 >= OCCUPANCY_RAW_THRESHOLD || 
+                           o3 >= OCCUPANCY_RAW_THRESHOLD || 
+                           o4 >= OCCUPANCY_RAW_THRESHOLD);
+        updateOccupancyRgbState(isOccupied);
+    }
 
     // 3. Periodic Live Quad Sensor Logging to Serial Port
     if (millis() - lastSerialLog >= SERIAL_LOG_INTERVAL_MS)
@@ -253,23 +428,26 @@ void loop()
         }
     }
 
-    // 6. Visual Status LED Indicator
-    if (WiFiManager::isWiFiConnected() && MQTTManager::isMQTTConnected())
+    // 6. Visual Status LED Indicator (Only active when RGB LED is not using D4)
+    if (!RGB_LED_ENABLED)
     {
-        if (millis() - lastLedToggle >= 500)
+        if (WiFiManager::isWiFiConnected() && MQTTManager::isMQTTConnected())
         {
-            lastLedToggle = millis();
-            ledState = !ledState;
-            digitalWrite(STATUS_LED_PIN, ledState ? LOW : HIGH);
+            if (millis() - lastLedToggle >= 500)
+            {
+                lastLedToggle = millis();
+                ledState = !ledState;
+                digitalWrite(STATUS_LED_PIN, ledState ? LOW : HIGH);
+            }
         }
-    }
-    else
-    {
-        if (millis() - lastLedToggle >= 150)
+        else
         {
-            lastLedToggle = millis();
-            ledState = !ledState;
-            digitalWrite(STATUS_LED_PIN, ledState ? LOW : HIGH);
+            if (millis() - lastLedToggle >= 150)
+            {
+                lastLedToggle = millis();
+                ledState = !ledState;
+                digitalWrite(STATUS_LED_PIN, ledState ? LOW : HIGH);
+            }
         }
     }
 }

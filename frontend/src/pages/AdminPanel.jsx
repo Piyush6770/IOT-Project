@@ -17,10 +17,8 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import PeopleIcon from '@mui/icons-material/People';
 import ChairIcon from '@mui/icons-material/Chair';
-import CloudDoneIcon from '@mui/icons-material/CloudDone';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -28,7 +26,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { adminData } from '../services/mockData';
 import { api } from '../services/api';
 
-export const AdminPanel = () => {
+export const AdminPanel = ({ sensorData, isOnline = true }) => {
   const [chairs, setChairs] = useState(adminData.chairs);
   const [users, setUsers] = useState(adminData.users);
   const [stats, setStats] = useState({
@@ -63,6 +61,26 @@ export const AdminPanel = () => {
     loadAdminFleet();
   }, []);
 
+  const dynamicChairs = React.useMemo(() => {
+    return chairs.map((c) => {
+      if (c.id === 'CHAIR001') {
+        const occupiedStatus = sensorData?.isOccupied ? 'Online (Occupied)' : 'Online (Vacant)';
+        return {
+          ...c,
+          status: isOnline ? occupiedStatus : 'Offline',
+          battery: sensorData?.rssi ? `${sensorData.rssi} dBm` : c.battery,
+        };
+      }
+      return c;
+    });
+  }, [chairs, sensorData, isOnline]);
+
+  const dynamicStats = React.useMemo(() => ({
+    ...stats,
+    activeChairs: isOnline ? Math.max(stats.activeChairs, 1) : Math.max(0, stats.activeChairs - 1),
+    activeAlerts: sensorData?.breakReminderActive ? stats.activeAlerts + 1 : stats.activeAlerts,
+  }), [stats, isOnline, sensorData?.breakReminderActive]);
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       {/* Title */}
@@ -93,10 +111,10 @@ export const AdminPanel = () => {
                 TOTAL DEPLOYED CHAIRS
               </Typography>
               <Typography variant="h3" sx={{ fontWeight: 800, color: 'primary.main', my: 0.5 }}>
-                {adminData.stats.totalChairs}
+                {dynamicStats.totalChairs}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {adminData.stats.activeChairs} Active • {adminData.stats.inactiveChairs} Offline
+                {dynamicStats.activeChairs} Active • {(dynamicStats.totalChairs - dynamicStats.activeChairs) || 0} Offline
               </Typography>
             </CardContent>
           </Card>
@@ -109,7 +127,7 @@ export const AdminPanel = () => {
                 REGISTERED HEALTHCARE USERS
               </Typography>
               <Typography variant="h3" sx={{ fontWeight: 800, color: '#3B82F6', my: 0.5 }}>
-                {adminData.stats.totalUsers}
+                {dynamicStats.totalUsers}
               </Typography>
               <Typography variant="caption" color="text.secondary">
                 Across 5 Clinical & Research Labs
@@ -161,7 +179,7 @@ export const AdminPanel = () => {
                 Smart Chair Fleet Management
               </Typography>
             </Box>
-            <Chip label={`${chairs.length} Registered Nodes`} size="small" variant="outlined" />
+            <Chip label={`${dynamicChairs.length} Registered Nodes`} size="small" variant="outlined" />
           </Box>
 
           <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
@@ -171,13 +189,13 @@ export const AdminPanel = () => {
                   <TableCell>CHAIR ID</TableCell>
                   <TableCell>LOCATION / DEPT</TableCell>
                   <TableCell>ASSIGNED USER</TableCell>
-                  <TableCell>BATTERY</TableCell>
+                  <TableCell>BATTERY / RSSI</TableCell>
                   <TableCell>STATUS</TableCell>
                   <TableCell align="right">ACTIONS</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {chairs.map((chair) => (
+                {dynamicChairs.map((chair) => (
                   <TableRow key={chair.id} hover>
                     <TableCell sx={{ fontWeight: 700, fontFamily: 'monospace' }}>{chair.id}</TableCell>
                     <TableCell>{chair.location}</TableCell>
@@ -187,7 +205,7 @@ export const AdminPanel = () => {
                       <Chip
                         label={chair.status}
                         size="small"
-                        color={chair.status === 'Online' ? 'success' : chair.status === 'Offline' ? 'error' : 'default'}
+                        color={chair.status.startsWith('Online') ? 'success' : chair.status === 'Offline' ? 'error' : 'default'}
                         sx={{ fontWeight: 700, fontSize: 11 }}
                       />
                     </TableCell>

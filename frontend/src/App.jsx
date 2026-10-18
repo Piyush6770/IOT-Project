@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Box, useMediaQuery, useTheme } from '@mui/material';
+import { Box } from '@mui/material';
 
 import { CustomThemeProvider } from './theme/ThemeContext';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { useSimulatedWebSocket } from './hooks/useSimulatedWebSocket';
 
 import { Navbar } from './components/Navbar';
@@ -28,8 +28,6 @@ const ProtectedRoute = ({ children }) => {
 
 // Main Layout Shell with Device Frame Container
 const MainLayout = ({ children, sensorProps }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleToggleSidebar = () => setSidebarOpen((prev) => !prev);
@@ -138,7 +136,11 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MainLayout sensorProps={sensorProps}>
-              <SedentaryAnalytics currentSbi={sensorProps.sensorData.sbiScore} />
+              <SedentaryAnalytics
+                currentSbi={sensorProps.sensorData.sbiScore}
+                sensorData={sensorProps.sensorData}
+                history={sensorProps.history}
+              />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -149,7 +151,10 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MainLayout sensorProps={sensorProps}>
-              <PostureAnalytics />
+              <PostureAnalytics
+                sensorData={sensorProps.sensorData}
+                history={sensorProps.history}
+              />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -160,7 +165,7 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MainLayout sensorProps={sensorProps}>
-              <Alerts />
+              <Alerts sensorData={sensorProps.sensorData} />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -171,7 +176,10 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MainLayout sensorProps={sensorProps}>
-              <Reports />
+              <Reports
+                sensorData={sensorProps.sensorData}
+                history={sensorProps.history}
+              />
             </MainLayout>
           </ProtectedRoute>
         }
@@ -198,6 +206,7 @@ const AppRoutes = () => {
                 latency={sensorProps.latency}
                 calibrateSensor={sensorProps.calibrateSensor}
                 calibrateAll={sensorProps.calibrateAll}
+                sensorData={sensorProps.sensorData}
               />
             </MainLayout>
           </ProtectedRoute>
@@ -209,7 +218,10 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <MainLayout sensorProps={sensorProps}>
-              <AdminPanel />
+              <AdminPanel
+                sensorData={sensorProps.sensorData}
+                isOnline={sensorProps.isOnline}
+              />
             </MainLayout>
           </ProtectedRoute>
         }

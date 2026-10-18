@@ -20,7 +20,7 @@ import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 
 import { api } from '../services/api';
 
-export const Reports = () => {
+export const Reports = ({ sensorData, history = [] }) => {
   const [reportType, setReportType] = useState('Weekly'); // Daily, Weekly, Monthly
   const [toastMessage, setToastMessage] = useState('');
   const [liveReport, setLiveReport] = useState(null);
@@ -46,9 +46,23 @@ export const Reports = () => {
     Monthly: { avgSitting: '5.9 hrs/day', avgSbi: 58, risk: 'Low-Moderate Risk', breaks: '11 breaks/day', compliance: '88%' },
   };
 
-  const currentData = reportMetrics[reportType];
+  const fallback = reportMetrics[reportType];
+  const liveSbi = sensorData?.sbi ?? sensorData?.sbiScore;
+  const currentData = {
+    avgSitting: liveReport?.avg_sitting_hours ? `${liveReport.avg_sitting_hours} hrs` : fallback.avgSitting,
+    avgSbi: (reportType === 'Daily' && liveSbi !== undefined) ? Math.round(liveSbi) : (liveReport?.avg_sbi ?? fallback.avgSbi),
+    risk: liveReport?.risk_level ?? (liveSbi >= 67 ? 'High Risk' : fallback.risk),
+    breaks: (reportType === 'Daily' && sensorData?.breakCount !== undefined) ? `${sensorData.breakCount} breaks` : (liveReport?.daily_breaks ? `${liveReport.daily_breaks} breaks` : fallback.breaks),
+    compliance: fallback.compliance,
+  };
 
   const handleDownloadCSV = () => {
+    const liveHardwareCsv = sensorData
+      ? `Live Hardware State,${sensorData.isOccupied ? 'Occupied' : 'Vacant'},Status,Active\n` +
+        `Live Posture Classification,${sensorData.posture || 'Balanced'},Clinical,Current\n` +
+        `Active Session Duration,${sensorData.sittingDurationMinutes || 0} mins,Time,Live\n`
+      : '';
+
     const csvContent =
       'data:text/csv;charset=utf-8,' +
       'Metric,Value,Unit,Target\n' +
@@ -57,7 +71,8 @@ export const Reports = () => {
       `Average SBI Score,${currentData.avgSbi},Index (0-100),< 50\n` +
       `Overall Risk Level,${currentData.risk},Category,Low\n` +
       `Average Daily Breaks,${currentData.breaks},Breaks,10 breaks\n` +
-      `Ergonomic Compliance,${currentData.compliance},Percentage,> 85%\n`;
+      `Ergonomic Compliance,${currentData.compliance},Percentage,> 85%\n` +
+      liveHardwareCsv;
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -71,8 +86,12 @@ export const Reports = () => {
   };
 
   const handleDownloadPDF = () => {
+    const liveHardwarePdf = sensorData
+      ? `\nLIVE HARDWARE TELEMETRY:\n- Realtime Occupancy: ${sensorData.isOccupied ? 'Occupied' : 'Vacant'}\n- Current Posture: ${sensorData.posture || 'Balanced'}\n- Session Duration: ${sensorData.sittingDurationMinutes || 0} mins\n- FSR Channels: P1=${sensorData.p1 || 0}%, P2=${sensorData.p2 || 0}%, P3=${sensorData.p3 || 0}%, P4=${sensorData.p4 || 0}%\n`
+      : '';
+
     // Generate text blob for PDF stub file
-    const content = `SMART CHAIR IOT ERGONOMIC HEALTH REPORT\n=========================================\nScope: ${reportType} Report\nGenerated: ${new Date().toLocaleString()}\n\nSUMMARY METRICS:\n- Average Sitting Time: ${currentData.avgSitting}\n- Average SBI Index: ${currentData.avgSbi}\n- Overall Risk Level: ${currentData.risk}\n- Daily Micro-Breaks: ${currentData.breaks}\n- Ergonomic Compliance: ${currentData.compliance}\n\nClinical Recommendation: Maintain regular micro-breaks every 45 minutes to optimize postural vascular flow.`;
+    const content = `SMART CHAIR IOT ERGONOMIC HEALTH REPORT\n=========================================\nScope: ${reportType} Report\nGenerated: ${new Date().toLocaleString()}\n\nSUMMARY METRICS:\n- Average Sitting Time: ${currentData.avgSitting}\n- Average SBI Index: ${currentData.avgSbi}\n- Overall Risk Level: ${currentData.risk}\n- Daily Micro-Breaks: ${currentData.breaks}\n- Ergonomic Compliance: ${currentData.compliance}${liveHardwarePdf}\n\nClinical Recommendation: Maintain regular micro-breaks every 45 minutes to optimize postural vascular flow.`;
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -90,9 +109,22 @@ export const Reports = () => {
       {/* Title */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: 'serif' }}>
-            Ergonomic Health Reports & Export
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: 'serif' }}>
+              Ergonomic Health Reports & Export
+            </Typography>
+            {sensorData && (
+              <Chip
+                label={sensorData.isOccupied ? '🟢 LIVE HARDWARE LINKED' : '⚪ HARDWARE STANDBY'}
+                sx={{
+                  bgcolor: sensorData.isOccupied ? 'rgba(47, 191, 160, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  color: sensorData.isOccupied ? '#2FBFA0' : '#9A9AA5',
+                  fontWeight: 800,
+                  fontSize: 11,
+                }}
+              />
+            )}
+          </Box>
           <Typography variant="body2" color="text.secondary">
             Generate and Export Automated Daily, Weekly, and Monthly Clinical Analytics
           </Typography>

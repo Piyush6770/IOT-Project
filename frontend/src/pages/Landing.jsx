@@ -13,7 +13,6 @@ import {
   Divider,
 } from '@mui/material';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import StarIcon from '@mui/icons-material/Star';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import ChatBubbleOutlinedIcon from '@mui/icons-material/ChatBubbleOutlined';
@@ -25,7 +24,6 @@ import ShareIcon from '@mui/icons-material/Share';
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 
 import { ChairLogo } from '../components/ChairLogo';
 import { useNavigate } from 'react-router-dom';

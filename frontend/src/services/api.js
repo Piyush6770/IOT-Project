@@ -30,29 +30,24 @@ async function apiRequest(endpoint, options = {}) {
     headers,
   };
 
-  try {
-    const response = await fetch(endpoint, config);
-    if (!response.ok) {
-      if (response.status === 401) {
-        // Token expired or invalid
-        console.warn('API returned 401 Unauthorized');
-      }
-      let errorData;
-      try {
-        errorData = await response.json();
-      } catch {
-        errorData = { detail: `HTTP ${response.status}: ${response.statusText}` };
-      }
-      const error = new Error(errorData.detail || 'API request failed');
-      error.status = response.status;
-      error.data = errorData;
-      throw error;
+  const response = await fetch(endpoint, config);
+  if (!response.ok) {
+    if (response.status === 401) {
+      // Token expired or invalid
+      console.warn('API returned 401 Unauthorized');
     }
-    return await response.json();
-  } catch (err) {
-    // If backend is not reached, throw error so caller can handle gracefully
-    throw err;
+    let errorData;
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = { detail: `HTTP ${response.status}: ${response.statusText}` };
+    }
+    const error = new Error(errorData.detail || 'API request failed');
+    error.status = response.status;
+    error.data = errorData;
+    throw error;
   }
+  return await response.json();
 }
 
 export const api = {

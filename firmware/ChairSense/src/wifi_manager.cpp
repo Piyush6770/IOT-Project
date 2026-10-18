@@ -4,14 +4,51 @@
 
 unsigned long WiFiManager::_lastReconnectAttempt = 0;
 bool WiFiManager::_isConnected = false;
+bool WiFiManager::_isAPActive = false;
 
 void WiFiManager::init()
 {
     Serial.println(F("[WiFi] Initializing WiFi Subsystem..."));
-    WiFi.mode(WIFI_STA);
+    
+    if (WIFI_AP_MODE_ENABLED)
+    {
+        // Dual Mode: Broadcast Hotspot for direct laptop connection AND allow station connection
+        WiFi.mode(WIFI_AP_STA);
+        startAccessPoint();
+    }
+    else
+    {
+        WiFi.mode(WIFI_STA);
+    }
+
     WiFi.setSleepMode(WIFI_NONE_SLEEP); // Maintain full RF power on powerbank
     WiFi.setAutoReconnect(true);
     delay(50);
+}
+
+void WiFiManager::startAccessPoint()
+{
+    IPAddress apIP(192, 168, 4, 1);
+    IPAddress netMsk(255, 255, 255, 0);
+    WiFi.softAPConfig(apIP, apIP, netMsk);
+
+    bool apResult = WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASSWORD, WIFI_AP_CHANNEL, WIFI_AP_HIDDEN, WIFI_AP_MAX_CONN);
+    _isAPActive = apResult;
+    if (apResult)
+    {
+        Serial.println(F("\n========================================================"));
+        Serial.println(F(" >>> ESP8266 WiFi Hotspot (AP Mode) Started!"));
+        Serial.printf( " >>> Hotspot SSID    : %s\n", WIFI_AP_SSID);
+        Serial.printf( " >>> Hotspot Password: %s\n", WIFI_AP_PASSWORD);
+        Serial.printf( " >>> Hotspot IP      : %s\n", WiFi.softAPIP().toString().c_str());
+        Serial.printf( " >>> Direct Web URL  : http://%s/\n", WiFi.softAPIP().toString().c_str());
+        Serial.printf( " >>> Direct JSON URL : http://%s/sensor\n", WiFi.softAPIP().toString().c_str());
+        Serial.println(F("========================================================\n"));
+    }
+    else
+    {
+        Serial.println(F("[WiFi] Failed to launch softAP!"));
+    }
 }
 
 void WiFiManager::connectWiFi()
@@ -110,4 +147,19 @@ String WiFiManager::getSSID()
 String WiFiManager::getMacAddress()
 {
     return WiFi.macAddress();
+}
+
+bool WiFiManager::isAPActive()
+{
+    return _isAPActive;
+}
+
+String WiFiManager::getAPIP()
+{
+    return _isAPActive ? WiFi.softAPIP().toString() : "192.168.4.1";
+}
+
+String WiFiManager::getAPSSID()
+{
+    return String(WIFI_AP_SSID);
 }

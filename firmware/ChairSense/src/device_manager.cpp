@@ -134,6 +134,27 @@ String DeviceManager::getTelemetryPayload(int fsr1, int fsr2, int fsr3, int fsr4
     doc["pressure3"] = fsr3;
     doc["pressure4"] = fsr4;
 
+    // Authoritative ChairSense physical names
+    doc["seat_left"] = fsr1;
+    doc["seat_right"] = fsr2;
+    doc["back_left"] = fsr3;
+    doc["back_right"] = fsr4;
+
+    // Structured sensors dictionary
+    JsonObject sensors = doc["sensors"].to<JsonObject>();
+    sensors["seat_left"] = fsr1;
+    sensors["seat_right"] = fsr2;
+    sensors["back_left"] = fsr3;
+    sensors["back_right"] = fsr4;
+
+    // Versioning, uptime, and occupancy evaluation
+    doc["schema_version"] = 1;
+    doc["uptime_ms"] = millis();
+    doc["occupancy"] = (fsr1 >= OCCUPANCY_RAW_THRESHOLD || 
+                        fsr2 >= OCCUPANCY_RAW_THRESHOLD || 
+                        fsr3 >= OCCUPANCY_RAW_THRESHOLD || 
+                        fsr4 >= OCCUPANCY_RAW_THRESHOLD);
+
     // Legacy backwards compatibility keys
     doc["raw"] = fsr1;
     doc["voltage"] = static_cast<float>(fsr1 * 3.3f / 1023.0f);

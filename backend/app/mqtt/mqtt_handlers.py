@@ -17,13 +17,28 @@ async def handle_sensor_message(topic: str, raw_payload: str) -> None:
             return
 
         # Check if payload contains sensor telemetry data
-        if "pressure1" in data or "fsr1_raw" in data or "raw" in data:
+        if any(k in data for k in ("pressure1", "fsr1_raw", "raw", "sensors", "seat_left")):
             # Normalize fields if needed
             if "chairId" not in data:
-                data["chairId"] = data.get("deviceId", "CHAIR001")
+                data["chairId"] = data.get("deviceId", data.get("device_id", "CHAIR001"))
             if "timestamp" not in data or not data["timestamp"]:
                 data["timestamp"] = datetime.now(timezone.utc).isoformat()
-            if "pressure1" not in data and "fsr1_raw" in data:
+            
+            # Extract from nested "sensors" dictionary if provided
+            if "sensors" in data and isinstance(data["sensors"], dict):
+                s = data["sensors"]
+                if "pressure1" not in data:
+                    data["pressure1"] = float(s.get("seat_left", s.get("pressure1", s.get("fsr1_raw", 0))))
+                    data["pressure2"] = float(s.get("seat_right", s.get("pressure2", s.get("fsr2_raw", 0))))
+                    data["pressure3"] = float(s.get("back_left", s.get("pressure3", s.get("fsr3_raw", 0))))
+                    data["pressure4"] = float(s.get("back_right", s.get("pressure4", s.get("fsr4_raw", 0))))
+            elif "seat_left" in data:
+                if "pressure1" not in data:
+                    data["pressure1"] = float(data.get("seat_left", 0))
+                    data["pressure2"] = float(data.get("seat_right", 0))
+                    data["pressure3"] = float(data.get("back_left", 0))
+                    data["pressure4"] = float(data.get("back_right", 0))
+            elif "pressure1" not in data and "fsr1_raw" in data:
                 data["pressure1"] = float(data.get("fsr1_raw", 0))
                 data["pressure2"] = float(data.get("fsr2_raw", 0))
                 data["pressure3"] = float(data.get("fsr3_raw", 0))

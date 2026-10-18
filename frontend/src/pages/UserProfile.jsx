@@ -13,7 +13,6 @@ import {
   MenuItem,
   Snackbar,
 } from '@mui/material';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import SaveIcon from '@mui/icons-material/Save';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useAuth } from '../context/AuthContext';
@@ -34,7 +33,9 @@ export const UserProfile = () => {
 
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  React.useEffect(() => {
+  const [prevUser, setPrevUser] = useState(user);
+  if (user !== prevUser) {
+    setPrevUser(user);
     if (user) {
       setFormData((prev) => ({
         ...prev,
@@ -48,7 +49,7 @@ export const UserProfile = () => {
         recommendedBreakIntervalMinutes: user.recommendedBreakIntervalMinutes || prev.recommendedBreakIntervalMinutes,
       }));
     }
-  }, [user]);
+  }
 
   const handleChange = (field) => (e) => {
     setFormData((prev) => ({

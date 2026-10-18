@@ -19,7 +19,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
-  Legend,
   AreaChart,
   Area,
 } from 'recharts';
@@ -27,15 +26,28 @@ import {
 import { RiskGauge } from '../components/RiskGauge';
 import { weeklySittingData, sbiTrend7Days } from '../services/mockData';
 import { api } from '../services/api';
-import { useTheme } from '@mui/material/styles';
 
-export const SedentaryAnalytics = ({ currentSbi = 74 }) => {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === 'dark';
+export const SedentaryAnalytics = ({ currentSbi = 74, sensorData, history = [] }) => {
   const [period, setPeriod] = useState('Weekly'); // 'Weekly' | 'Monthly'
   const [sbiScore, setSbiScore] = useState(currentSbi);
-  const [sittingDuration, setSittingDuration] = useState(52);
   const [breaksToday, setBreaksToday] = useState(8);
+
+  // Sync with live telemetry stream when received from ESP8266
+  React.useEffect(() => {
+    if (sensorData?.sbi !== undefined) {
+      setSbiScore(Math.round(sensorData.sbi));
+    } else if (sensorData?.sbiScore !== undefined) {
+      setSbiScore(Math.round(sensorData.sbiScore));
+    } else if (currentSbi !== undefined) {
+      setSbiScore(Math.round(currentSbi));
+    }
+  }, [sensorData?.sbi, sensorData?.sbiScore, currentSbi]);
+
+  React.useEffect(() => {
+    if (sensorData?.breakCount !== undefined) {
+      setBreaksToday(sensorData.breakCount);
+    }
+  }, [sensorData?.breakCount]);
 
   React.useEffect(() => {
     const fetchSedentaryData = async () => {
@@ -43,7 +55,6 @@ export const SedentaryAnalytics = ({ currentSbi = 74 }) => {
         const latest = await api.getCurrentSedentary('CHAIR001');
         if (latest) {
           if (latest.sedentary_index !== undefined) setSbiScore(Math.round(latest.sedentary_index));
-          if (latest.sitting_duration !== undefined) setSittingDuration(Math.round(latest.sitting_duration));
           if (latest.break_count !== undefined) setBreaksToday(latest.break_count);
         }
       } catch {
@@ -56,12 +67,40 @@ export const SedentaryAnalytics = ({ currentSbi = 74 }) => {
   const breaksRecommended = 10;
   const breakPercentage = Math.min(100, Math.round((breaksToday / breaksRecommended) * 100));
 
+  // Compute dynamic chart data with live logged session
+  const activeSittingHrs = React.useMemo(() => {
+    return parseFloat(((sensorData?.sittingDurationMinutes || 0) / 60).toFixed(1));
+  }, [sensorData?.sittingDurationMinutes]);
+
+  const liveWeeklySittingData = React.useMemo(() => {
+    const base = [...weeklySittingData];
+    if (base.length > 0 && activeSittingHrs > 0) {
+      const lastIndex = base.length - 1;
+      base[lastIndex] = {
+        ...base[lastIndex],
+        sittingHours: parseFloat((base[lastIndex].sittingHours + activeSittingHrs).toFixed(1)),
+      };
+    }
+    return base;
+  }, [activeSittingHrs]);
+
+  const liveSbiTrend = React.useMemo(() => {
+    const base = [...sbiTrend7Days];
+    if (base.length > 0 && sbiScore !== undefined) {
+      base[base.length - 1] = {
+        ...base[base.length - 1],
+        sbi: sbiScore,
+      };
+    }
+    return base;
+  }, [sbiScore]);
+
   return (
     <Box sx={{ flexGrow: 1 }}>
       {/* Bold Ethereal Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 3.5, flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
             <Typography variant="h2" sx={{ fontWeight: 900, color: 'text.primary', letterSpacing: '-0.03em' }}>
               Sedentary Analytics
             </Typography>
@@ -69,6 +108,17 @@ export const SedentaryAnalytics = ({ currentSbi = 74 }) => {
               label="CORE RESEARCH"
               sx={{ bgcolor: 'rgba(198, 242, 108, 0.2)', color: '#C6F26C', fontWeight: 900, fontSize: 11 }}
             />
+            {sensorData && (
+              <Chip
+                label={sensorData.isOccupied ? `🟢 OCCUPIED (${sensorData.sittingDurationMinutes || 0}m active)` : '⚪ VACANT'}
+                sx={{
+                  bgcolor: sensorData.isOccupied ? 'rgba(47, 191, 160, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                  color: sensorData.isOccupied ? '#2FBFA0' : '#9A9AA5',
+                  fontWeight: 800,
+                  fontSize: 11,
+                }}
+              />
+            )}
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mt: 0.5 }}>
             Sitting Duration Revenue Flow, Micro-Breaks & SBI Clinical Risk Model
@@ -89,14 +139,14 @@ export const SedentaryAnalytics = ({ currentSbi = 74 }) => {
                 <Chip label="Clinical" size="small" sx={{ bgcolor: 'rgba(255, 176, 32, 0.15)', color: '#FFB020', fontWeight: 800 }} />
               </Box>
 
-              <RiskGauge value={currentSbi} />
+              <RiskGauge value={sbiScore} />
 
               <Box sx={{ mt: 2, p: 2, borderRadius: 3, bgcolor: 'rgba(255, 255, 255, 0.03)', textAlign: 'left' }}>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800, display: 'block' }}>
                   RISK EVALUATION:
                 </Typography>
-                <Typography variant="body2" sx={{ fontWeight: 800, mt: 0.5, color: currentSbi >= 67 ? '#FF5B6E' : '#FFB020' }}>
-                  {currentSbi >= 67 ? '🔴 High Lumbar & Capillary Stress' : '🟡 Moderate Ergonomic Load'}
+                <Typography variant="body2" sx={{ fontWeight: 800, mt: 0.5, color: sbiScore >= 67 ? '#FF5B6E' : '#FFB020' }}>
+                  {sbiScore >= 67 ? '🔴 High Lumbar & Capillary Stress' : '🟡 Moderate Ergonomic Load'}
                 </Typography>
               </Box>
             </CardContent>
@@ -211,7 +261,7 @@ export const SedentaryAnalytics = ({ currentSbi = 74 }) => {
 
               <Box sx={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklySittingData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <BarChart data={liveWeeklySittingData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.06)" />
                     <XAxis dataKey="day" stroke="#9A9AA5" />
                     <YAxis stroke="#9A9AA5" unit="h" />
@@ -245,7 +295,7 @@ export const SedentaryAnalytics = ({ currentSbi = 74 }) => {
 
               <Box sx={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={sbiTrend7Days} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <AreaChart data={liveSbiTrend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="sbiGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#C6F26C" stopOpacity={0.4} />

@@ -15,7 +15,6 @@ import {
 import SensorsIcon from '@mui/icons-material/Sensors';
 import WifiIcon from '@mui/icons-material/Wifi';
 import MemoryIcon from '@mui/icons-material/Memory';
-import BatteryChargingFullIcon from '@mui/icons-material/BatteryChargingFull';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -32,6 +31,7 @@ import {
 } from 'recharts';
 
 import { ChairHeatmap } from '../components/ChairHeatmap';
+import { LiveDeviceCard } from '../components/LiveDeviceCard';
 import { useTheme } from '@mui/material/styles';
 import { Snackbar, Alert } from '@mui/material';
 
@@ -72,6 +72,11 @@ export const LiveMonitoring = ({
 
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
           <Chip
+            label={sensorData.isOccupied ? 'CHAIR OCCUPIED' : 'CHAIR EMPTY'}
+            color={sensorData.isOccupied ? 'primary' : 'default'}
+            sx={{ fontWeight: 800 }}
+          />
+          <Chip
             icon={<WifiIcon />}
             label={isOnline ? `ESP8266 ONLINE (${latency}ms)` : 'ESP8266 DISCONNECTED'}
             color={isOnline ? 'success' : 'error'}
@@ -88,6 +93,13 @@ export const LiveMonitoring = ({
         </Box>
       </Box>
 
+      {/* Break Reminder Alert Banner */}
+      {sensorData.breakReminderActive && (
+        <Alert severity="warning" sx={{ mb: 3, borderRadius: 3, fontWeight: 700 }}>
+          ⚠ Sedentary Break Reminder: Continuous sitting has exceeded 45 minutes ({sensorData.sittingDurationMinutes} min). Please stand up and stretch to restore healthy posture and circulation!
+        </Alert>
+      )}
+
       {/* Main Grid Layout */}
       <Grid container spacing={3}>
         {/* Left Column: Expanded Interactive Chair Heatmap */}
@@ -97,9 +109,24 @@ export const LiveMonitoring = ({
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
                 High-Resolution Seat Pressure Distribution
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                 4-Quadrant FSR Arrays with Real-time Weight Balance Vectoring
               </Typography>
+
+              {/* Relative Pressure Pattern Summary */}
+              <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 3, bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800, textTransform: 'uppercase' }}>
+                  Relative Pressure Balance Patterns
+                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5, flexWrap: 'wrap', gap: 1 }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    Seat: <span style={{ color: '#38bdf8' }}>{sensorData.seatBalance || 'Balanced'}</span>
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                    Backrest: <span style={{ color: '#F59E0B' }}>{sensorData.backrestBalance || 'Balanced'}</span>
+                  </Typography>
+                </Box>
+              </Paper>
 
               <ChairHeatmap
                 p1={sensorData.p1}
@@ -117,52 +144,52 @@ export const LiveMonitoring = ({
                 <Grid item xs={6}>
                   <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 3 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      P1 / C0 (FRONT LEFT)
+                      FSR 1 / C0 (SEAT LEFT)
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: '#1FBE8C' }}>
                       {sensorData.p1}%
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                      {sensorData.raw1 || 0} RAW ({sensorData.v1 || '0.00'}V)
+                      {sensorData.raw1 || 0} RAW ADC ({sensorData.v1 || '0.00'}V)
                     </Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={6}>
                   <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 3 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      P2 / C1 (FRONT RIGHT)
+                      FSR 2 / C1 (SEAT RIGHT)
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: '#3B82F6' }}>
                       {sensorData.p2}%
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                      {sensorData.raw2 || 0} RAW ({sensorData.v2 || '0.00'}V)
+                      {sensorData.raw2 || 0} RAW ADC ({sensorData.v2 || '0.00'}V)
                     </Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={6}>
                   <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 3 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      P3 / C2 (BACK LEFT)
+                      FSR 3 / C2 (BACK LEFT)
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: '#F59E0B' }}>
                       {sensorData.p3}%
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                      {sensorData.raw3 || 0} RAW ({sensorData.v3 || '0.00'}V)
+                      {sensorData.raw3 || 0} RAW ADC ({sensorData.v3 || '0.00'}V)
                     </Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={6}>
                   <Paper variant="outlined" sx={{ p: 1.5, textAlign: 'center', borderRadius: 3 }}>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                      P4 / C3 (BACK RIGHT)
+                      FSR 4 / C3 (BACK RIGHT)
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: '#EF4444' }}>
                       {sensorData.p4}%
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                      {sensorData.raw4 || 0} RAW ({sensorData.v4 || '0.00'}V)
+                      {sensorData.raw4 || 0} RAW ADC ({sensorData.v4 || '0.00'}V)
                     </Typography>
                   </Paper>
                 </Grid>
@@ -243,58 +270,17 @@ export const LiveMonitoring = ({
                     IoT Hardware & Gateway Diagnostics
                   </Typography>
 
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
-                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <MemoryIcon color="primary" />
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                            Hardware Architecture
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          ESP8266 + CD74HC4067 MUX
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Channels: C0, C1, C2, C3 Active
-                        </Typography>
-                      </Paper>
-                    </Grid>
-
-                    <Grid item xs={12} sm={4}>
-                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <WifiIcon color="success" />
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                            MQTT Telemetry Broker
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          broker.emqx.io:1883
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Topic: smartchair/chair001/sensors
-                        </Typography>
-                      </Paper>
-                    </Grid>
-
-                    <Grid item xs={12} sm={4}>
-                      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                          <SensorsIcon color="info" />
-                          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                            Chair Gateway ID
-                          </Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                          {sensorData.deviceId || 'CHAIR001'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Status: {isOnline ? 'Online (Real-Time)' : 'Offline'}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  </Grid>
+                  <Box sx={{ my: 1.5 }}>
+                    <LiveDeviceCard
+                      deviceId={sensorData.deviceId || 'CHAIR001'}
+                      status={isOnline ? 'ONLINE' : 'OFFLINE'}
+                      wifiRssi={sensorData.wifi || -45}
+                      ipAddress={sensorData.ipAddress || '192.168.4.1'}
+                      firmwareVersion="1.0.0"
+                      lastSeen={sensorData.lastSync || 'Just now'}
+                      brokerHost="broker.emqx.io"
+                    />
+                  </Box>
 
                   <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <FormControlLabel

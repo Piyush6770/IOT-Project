@@ -31,8 +31,6 @@ import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import LogoutIcon from '@mui/icons-material/Logout';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
-import SearchIcon from '@mui/icons-material/Search';
 import { ChairLogo } from './ChairLogo';
 
 import { useColorMode } from '../theme/ThemeContext';

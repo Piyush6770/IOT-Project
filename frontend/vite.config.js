@@ -27,6 +27,11 @@ export default defineConfig({
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
+      '/esp': {
+        target: 'http://192.168.4.1',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/esp/, ''),
+      },
     },
   },
 })

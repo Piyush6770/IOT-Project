@@ -100,9 +100,12 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const pollIntervalRef = useRef(null);
-  const lastPacketTimeRef = useRef(Date.now());
+  const lastPacketTimeRef = useRef(0);
   const offsetsRef = useRef(offsets);
-  offsetsRef.current = offsets;
+
+  useEffect(() => {
+    offsetsRef.current = offsets;
+  }, [offsets]);
 
   // Function to process incoming live payload (from WebSocket or REST poll)
   const processLiveReading = useCallback((data) => {
@@ -143,13 +146,75 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
     const v3 = toVoltage(cleanRaw3);
     const v4 = toVoltage(cleanRaw4);
 
+    const isOccupied = (cleanRaw1 > 12 || cleanRaw2 > 12 || cleanRaw3 > 12 || cleanRaw4 > 12);
+
+    // Relative Pressure Pattern Classification (Transparent, non-medical balance estimates)
+    const seatTotal = cleanRaw1 + cleanRaw2;
+    const seatDiff = Math.abs(cleanRaw1 - cleanRaw2);
+    let seatBalance = 'Insufficient data';
+    if (!isOccupied) {
+      seatBalance = 'Unoccupied';
+    } else if (seatTotal < 20) {
+      seatBalance = 'Light touch / Insufficient load';
+    } else if (seatDiff <= Math.max(15, seatTotal * 0.15)) {
+      seatBalance = 'Relatively balanced seat pressure';
+    } else if (cleanRaw1 > cleanRaw2) {
+      seatBalance = 'More pressure on the left seat';
+    } else {
+      seatBalance = 'More pressure on the right seat';
+    }
+
+    const backTotal = cleanRaw3 + cleanRaw4;
+    const backDiff = Math.abs(cleanRaw3 - cleanRaw4);
+    let backrestBalance = 'Insufficient data';
+    if (!isOccupied) {
+      backrestBalance = 'Unoccupied';
+    } else if (backTotal < 20) {
+      backrestBalance = 'Minimal backrest contact (Forward Lean)';
+    } else if (backDiff <= Math.max(15, backTotal * 0.15)) {
+      backrestBalance = 'Relatively balanced backrest pressure';
+    } else if (cleanRaw3 > cleanRaw4) {
+      backrestBalance = 'More pressure on left backrest';
+    } else {
+      backrestBalance = 'More pressure on right backrest';
+    }
+
+    // Sitting Duration & Break Tracking (survives browser refresh via localStorage)
+    let sessionStart = Number(localStorage.getItem('smartchair_session_start') || 0);
+    let breakCount = Number(localStorage.getItem('smartchair_break_count') || 0);
+
+    if (isOccupied) {
+      if (!sessionStart) {
+        sessionStart = Date.now();
+        localStorage.setItem('smartchair_session_start', String(sessionStart));
+      }
+    } else {
+      if (sessionStart && (Date.now() - sessionStart) > 60000) {
+        // Sat for at least 1 min before standing up -> counts as a break taken
+        breakCount += 1;
+        localStorage.setItem('smartchair_break_count', String(breakCount));
+      }
+      sessionStart = 0;
+      localStorage.removeItem('smartchair_session_start');
+    }
+
+    const calculatedDuration = sessionStart 
+      ? Math.max(1, Math.floor((Date.now() - sessionStart) / 60000)) 
+      : 0;
+
+    const sittingDurationMinutes = data.sedentary?.sitting_duration !== undefined
+      ? Math.round(data.sedentary.sitting_duration)
+      : (data.sittingDurationMinutes !== undefined ? data.sittingDurationMinutes : calculatedDuration);
+
+    const breakReminderActive = sittingDurationMinutes >= 45;
+
     const localPosture = classifyPostureLocal(p1Pct, p2Pct, p3Pct, p4Pct);
-    const postureName = (p1Pct === 0 && p2Pct === 0 && p3Pct === 0 && p4Pct === 0) 
+    const postureName = !isOccupied
       ? 'Chair Empty' 
       : (data.posture && data.posture !== 'No User' ? data.posture : localPosture.name);
     
     const confidence = data.confidence || localPosture.confidence || 96.5;
-    const sbiScore = data.sbiScore !== undefined ? data.sbiScore : 74;
+    const sbiScore = data.sbiScore !== undefined ? data.sbiScore : (isOccupied ? 74 : 10);
     const riskLevel = data.riskLevel || (sbiScore > 75 ? 'High' : sbiScore > 50 ? 'Moderate' : 'Low');
 
     const timeStr = new Date().toLocaleTimeString('en-US', {
@@ -191,6 +256,13 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
       confidence,
       sbiScore,
       riskLevel,
+      occupancy: isOccupied,
+      isOccupied,
+      seatBalance,
+      backrestBalance,
+      sittingDurationMinutes,
+      breakCount,
+      breakReminderActive,
       lastSync: timeStr,
       isConnected: true,
       deviceId: chairId,
@@ -241,7 +313,7 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
           // Try reconnecting in 3 seconds
           reconnectTimeoutRef.current = setTimeout(connectWebSocket, 3000);
         };
-      } catch (err) {
+      } catch {
         if (!isMounted) return;
         reconnectTimeoutRef.current = setTimeout(connectWebSocket, 4000);
       }
@@ -249,9 +321,40 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
 
     connectWebSocket();
 
-    // Fallback periodic polling for latest sensor reading & device status
+    // High-frequency polling directly to ESP8266 Access Point (192.168.4.1) & backend
     pollIntervalRef.current = setInterval(async () => {
       if (!isStreaming) return;
+
+      // 1. Direct ESP8266 Access Point Query (Active when laptop connects to ChairSense-WiFi)
+      try {
+        const apResp = await fetch('/esp/sensor', { signal: AbortSignal.timeout(600) });
+        if (apResp.ok) {
+          const apData = await apResp.json();
+          if (apData && (apData.sensors || apData.pressure1 !== undefined || apData.fsr1_raw !== undefined)) {
+            processLiveReading(apData);
+            setIsHardwareConnected(true);
+            setIsOnline(true);
+            return;
+          }
+        }
+      } catch {
+        // Not on ESP AP or AP not responding
+      }
+
+      try {
+        const directResp = await fetch('http://192.168.4.1/sensor', { signal: AbortSignal.timeout(600) });
+        if (directResp.ok) {
+          const directData = await directResp.json();
+          if (directData && (directData.sensors || directData.pressure1 !== undefined)) {
+            processLiveReading(directData);
+            setIsHardwareConnected(true);
+            setIsOnline(true);
+            return;
+          }
+        }
+      } catch {}
+
+      // 2. Fallback periodic polling for backend REST latest sensor reading & device status
       try {
         const [devInfo, latestSensor] = await Promise.allSettled([
           api.getDeviceInfo(chairId),
@@ -274,7 +377,7 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
       } catch {
         // Backend offline
       }
-    }, 3000);
+    }, 1000);
 
     return () => {
       isMounted = false;

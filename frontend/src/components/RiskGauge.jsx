@@ -1,9 +1,7 @@
 import React from 'react';
 import { Box, Typography, Chip } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 
-export const RiskGauge = ({ value = 74, title = 'Sedentary Risk Level' }) => {
-  const theme = useTheme();
+export const RiskGauge = ({ value = 74 }) => {
 
   const score = Math.min(100, Math.max(0, value));
 

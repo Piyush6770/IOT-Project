@@ -13,11 +13,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Divider,
 } from '@mui/material';
-import PieChartIcon from '@mui/icons-material/PieChart';
-import HistoryIcon from '@mui/icons-material/History';
-import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 
 import {
   ResponsiveContainer,
@@ -27,9 +23,8 @@ import {
   Tooltip as RechartsTooltip,
 } from 'recharts';
 
-import { postureDistribution, postureTimeline } from '../services/mockData';
+import { postureTimeline } from '../services/mockData';
 import { api } from '../services/api';
-import { useTheme } from '@mui/material/styles';
 
 const fintechPostureDistribution = [
   { name: 'Correct Sitting', value: 62, color: '#C6F26C' }, // Lime-green
@@ -39,22 +34,59 @@ const fintechPostureDistribution = [
   { name: 'Forward Lean', value: 5, color: '#4D9CFF' }, // Blue
 ];
 
-export const PostureAnalytics = () => {
-  const theme = useTheme();
+export const PostureAnalytics = ({ sensorData, history = [] }) => {
   const [timeline, setTimeline] = React.useState(postureTimeline);
   const [distribution, setDistribution] = React.useState(fintechPostureDistribution);
   const [postureQualityScore, setPostureQualityScore] = React.useState(85);
 
+  // Sync with live history stream when available
+  React.useEffect(() => {
+    if (history && history.length > 0) {
+      const counts = {};
+      history.forEach((h) => {
+        const post = h.posture || h.posture_type || 'Correct';
+        counts[post] = (counts[post] || 0) + 1;
+      });
+      const total = history.length;
+      const colors = {
+        'Correct': '#C6F26C',
+        'Slouching': '#FF5B6E',
+        'Left Lean': '#FFB020',
+        'Right Lean': '#9B7BFF',
+        'Forward Lean': '#4D9CFF',
+        'Chair Empty': '#64748B',
+      };
+      const dist = Object.entries(counts).map(([name, count]) => ({
+        name,
+        value: Math.round((count / total) * 100),
+        color: colors[name] || '#38BDF8',
+      }));
+      if (dist.length > 0) setDistribution(dist);
+
+      const correctCount = counts['Correct'] || 0;
+      setPostureQualityScore(Math.round((correctCount / total) * 100));
+
+      const mappedTimeline = history.slice(0, 10).map((h) => ({
+        time: h.time || (h.timestamp ? new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
+        posture: h.posture || h.posture_type || 'Correct',
+        duration: h.confidence ? `${Math.round(h.confidence)}% conf` : 'Active',
+        status: (h.posture === 'Correct' || h.posture_type === 'Correct') ? 'optimal' : (h.posture === 'Chair Empty' || h.posture_type === 'Chair Empty') ? 'success' : 'warning',
+      }));
+      setTimeline(mappedTimeline);
+    }
+  }, [history]);
+
+  // Fallback initial fetch from backend on mount if stream hasn't populated yet
   React.useEffect(() => {
     const fetchPostureData = async () => {
       try {
-        const history = await api.getPostureHistory('CHAIR001', 30);
-        if (history && history.length > 0) {
+        const backendHistory = await api.getPostureHistory('CHAIR001', 30);
+        if (backendHistory && backendHistory.length > 0 && (!history || history.length === 0)) {
           const counts = {};
-          history.forEach((h) => {
+          backendHistory.forEach((h) => {
             counts[h.posture_type] = (counts[h.posture_type] || 0) + 1;
           });
-          const total = history.length;
+          const total = backendHistory.length;
           const colors = {
             'Correct': '#C6F26C',
             'Slouching': '#FF5B6E',
@@ -73,7 +105,7 @@ export const PostureAnalytics = () => {
           const correctCount = counts['Correct'] || 0;
           setPostureQualityScore(Math.round((correctCount / total) * 100));
 
-          const mappedTimeline = history.slice(0, 10).map((h) => ({
+          const mappedTimeline = backendHistory.slice(0, 10).map((h) => ({
             time: new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             posture: h.posture_type,
             duration: `${Math.round(h.confidence)}% conf`,
@@ -87,6 +119,16 @@ export const PostureAnalytics = () => {
     };
     fetchPostureData();
   }, []);
+
+  const pelvicStability = sensorData?.p1 !== undefined && sensorData?.p2 !== undefined
+    ? Math.max(10, Math.min(100, Math.round(100 - Math.abs(sensorData.p1 - sensorData.p2) * 2)))
+    : 92;
+
+  const lumbarSupport = sensorData?.p3 !== undefined && sensorData?.p4 !== undefined
+    ? Math.max(10, Math.min(100, Math.round(100 - Math.abs(sensorData.p3 - sensorData.p4) * 2)))
+    : 88;
+
+  const postureGrade = postureQualityScore >= 80 ? 'Grade A' : postureQualityScore >= 65 ? 'Grade B' : postureQualityScore >= 50 ? 'Grade C' : 'Grade D';
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -128,7 +170,7 @@ export const PostureAnalytics = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={fintechPostureDistribution}
+                          data={distribution}
                           cx="50%"
                           cy="50%"
                           innerRadius={65}
@@ -136,7 +178,7 @@ export const PostureAnalytics = () => {
                           paddingAngle={5}
                           dataKey="value"
                         >
-                          {fintechPostureDistribution.map((entry, index) => (
+                          {distribution.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Pie>
@@ -171,7 +213,7 @@ export const PostureAnalytics = () => {
                 {/* Right: Category Legend List */}
                 <Grid item xs={12} sm={6}>
                   <Paper variant="outlined" sx={{ p: 2, borderRadius: 4, bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
-                    {fintechPostureDistribution.map((item) => (
+                    {distribution.map((item) => (
                       <Box key={item.name} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', my: 1.2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
                           <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: item.color }} />
@@ -200,10 +242,10 @@ export const PostureAnalytics = () => {
                   POSTURE ALIGNMENT GRADE
                 </Typography>
                 <Typography variant="h2" sx={{ fontWeight: 900, my: 1 }}>
-                  Grade A
+                  {postureGrade}
                 </Typography>
                 <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  62% of working hours maintained in optimal neutral spine alignment.
+                  {postureQualityScore}% of working hours maintained in optimal neutral spine alignment.
                 </Typography>
               </Box>
 
@@ -211,11 +253,11 @@ export const PostureAnalytics = () => {
                 <Grid container spacing={1} sx={{ textAlign: 'left' }}>
                   <Grid item xs={6}>
                     <Typography variant="caption" sx={{ opacity: 0.8 }}>Pelvic Stability</Typography>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>92% Stable</Typography>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>{pelvicStability}% Stable</Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="caption" sx={{ opacity: 0.8 }}>Lumbar Support</Typography>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>88% Contact</Typography>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 900 }}>{lumbarSupport}% Contact</Typography>
                   </Grid>
                 </Grid>
               </Box>
@@ -246,7 +288,7 @@ export const PostureAnalytics = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {postureTimeline.map((row, idx) => (
+                {timeline.map((row, idx) => (
                   <TableRow key={idx} hover>
                     <TableCell sx={{ fontWeight: 800, fontFamily: 'monospace' }}>{row.time}</TableCell>
                     <TableCell sx={{ fontWeight: 800 }}>{row.posture}</TableCell>

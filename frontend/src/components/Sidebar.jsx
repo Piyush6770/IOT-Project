@@ -10,7 +10,6 @@ import {
   Typography,
   Chip,
   Divider,
-  useMediaQuery,
   useTheme,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';

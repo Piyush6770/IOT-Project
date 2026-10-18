@@ -14,17 +14,12 @@ import {
   Chip,
   Paper,
   Button,
-  LinearProgress,
   Avatar,
+  Alert,
 } from '@mui/material';
 import TimerIcon from '@mui/icons-material/Timer';
 import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
-import SpeedIcon from '@mui/icons-material/Speed';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SensorsIcon from '@mui/icons-material/Sensors';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PauseIcon from '@mui/icons-material/Pause';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 import { KPICard } from '../components/KPICard';
@@ -90,6 +85,13 @@ export const Dashboard = ({ sensorData, history, isStreaming, toggleStreaming, f
           </Button>
         </Box>
       </Box>
+
+      {/* Break Reminder Alert Banner */}
+      {sensorData.breakReminderActive && (
+        <Alert severity="warning" sx={{ mb: 3.5, borderRadius: 3, fontWeight: 700 }}>
+          ⚠ Continuous Sedentary Alert: You have been sitting for {sensorData.sittingDurationMinutes || 0} minutes. Taking a 2-minute walking or standing break is recommended!
+        </Alert>
+      )}
 
       {/* Top Grid: Hero Gradient Card + Standard Dark Cards */}
       <Grid container spacing={3} sx={{ mb: 3.5 }}>
@@ -258,10 +260,10 @@ export const Dashboard = ({ sensorData, history, isStreaming, toggleStreaming, f
                       <SensorsIcon sx={{ color: '#C6F26C', fontSize: 28 }} />
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>
-                          FRONT QUADRANTS (P1 + P2)
+                          SEAT LOAD (P1 + P2)
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 900, color: 'text.primary' }}>
-                          {Math.round(((sensorData.p1 + sensorData.p2) / 2))}% <span style={{ fontSize: 13, color: '#9A9AA5' }}>avg load</span>
+                          {Math.round(((sensorData.p1 + sensorData.p2) / 2))}% <span style={{ fontSize: 13, color: '#9A9AA5' }}>avg seat</span>
                         </Typography>
                       </Box>
                     </Box>
@@ -274,10 +276,10 @@ export const Dashboard = ({ sensorData, history, isStreaming, toggleStreaming, f
                       <SensorsIcon sx={{ color: '#9B7BFF', fontSize: 28 }} />
                       <Box>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 800 }}>
-                          REAR QUADRANTS (P3 + P4)
+                          BACKREST LOAD (P3 + P4)
                         </Typography>
                         <Typography variant="h5" sx={{ fontWeight: 900, color: 'text.primary' }}>
-                          {Math.round(((sensorData.p3 + sensorData.p4) / 2))}% <span style={{ fontSize: 13, color: '#9A9AA5' }}>avg load</span>
+                          {Math.round(((sensorData.p3 + sensorData.p4) / 2))}% <span style={{ fontSize: 13, color: '#9A9AA5' }}>avg back</span>
                         </Typography>
                       </Box>
                     </Box>

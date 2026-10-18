@@ -11,27 +11,25 @@ import {
   Switch,
   FormControlLabel,
   TextField,
-  Divider,
   Snackbar,
   Alert,
   LinearProgress,
 } from '@mui/material';
-import SettingsIcon from '@mui/icons-material/Settings';
 import CloudQueueIcon from '@mui/icons-material/CloudQueue';
 import MemoryIcon from '@mui/icons-material/Memory';
 import BuildIcon from '@mui/icons-material/Build';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
 import { settingsData } from '../services/mockData';
 import { api } from '../services/api';
 
-export const Settings = ({ isOnline = true, latency = 24, calibrateSensor, calibrateAll }) => {
+export const Settings = ({ isOnline = true, latency = 24, calibrateSensor, calibrateAll, sensorData }) => {
   const [mqttConfig, setMqttConfig] = useState(settingsData.mqtt);
   const [chairConfig, setChairConfig] = useState(settingsData.chair);
   const [calib, setCalib] = useState(settingsData.calibration);
 
   const [calibratingSensor, setCalibratingSensor] = useState(null);
+  const [isCalibratingAll, setIsCalibratingAll] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
 
   React.useEffect(() => {
@@ -62,6 +60,15 @@ export const Settings = ({ isOnline = true, latency = 24, calibrateSensor, calib
     loadSettings();
   }, []);
 
+  const handleSaveMqtt = async () => {
+    try {
+      await api.updateSettings({ mqtt: mqttConfig });
+      setToastMsg('MQTT Broker configuration saved to backend!');
+    } catch {
+      setToastMsg('MQTT Broker configuration updated locally!');
+    }
+  };
+
   const handleCalibrateSensor = (sensorKey, sensorName) => {
     setCalibratingSensor(sensorKey);
     if (calibrateSensor) {
@@ -76,6 +83,25 @@ export const Settings = ({ isOnline = true, latency = 24, calibrateSensor, calib
       }));
       setToastMsg(`${sensorName} Tare Zero Calibration completed successfully! Value zeroed to 0.0%`);
     }, 800);
+  };
+
+  const handleCalibrateAll = () => {
+    setIsCalibratingAll(true);
+    if (calibrateAll) {
+      calibrateAll();
+    }
+    setTimeout(() => {
+      setIsCalibratingAll(false);
+      setCalib((prev) => ({
+        ...prev,
+        p1Offset: 0.0,
+        p2Offset: 0.0,
+        p3Offset: 0.0,
+        p4Offset: 0.0,
+        lastCalibrated: new Date().toLocaleTimeString(),
+      }));
+      setToastMsg('All 4 FSR Quadrants Tare Zero Calibrated successfully!');
+    }, 1000);
   };
 
   return (
@@ -161,7 +187,7 @@ export const Settings = ({ isOnline = true, latency = 24, calibrateSensor, calib
               />
 
               <Box sx={{ mt: 2, textAlign: 'right' }}>
-                <Button variant="contained" size="small" onClick={() => setToastMsg('MQTT Broker configuration updated!')}>
+                <Button variant="contained" size="small" onClick={handleSaveMqtt}>
                   Save MQTT Settings
                 </Button>
               </Box>
@@ -180,41 +206,48 @@ export const Settings = ({ isOnline = true, latency = 24, calibrateSensor, calib
                     Chair Hardware & Gateway Panel
                   </Typography>
                 </Box>
-                <Chip label={chairConfig.id} color="secondary" sx={{ fontWeight: 800 }} />
+                <Chip
+                  label={sensorData?.isOccupied ? '🟢 OCCUPIED' : '⚪ VACANT'}
+                  sx={{
+                    bgcolor: sensorData?.isOccupied ? 'rgba(47, 191, 160, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                    color: sensorData?.isOccupied ? '#2FBFA0' : '#9A9AA5',
+                    fontWeight: 800,
+                  }}
+                />
               </Box>
 
               <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, mb: 2.5, bgcolor: 'background.default' }}>
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
                     <Typography variant="caption" color="text.secondary" display="block">
-                      MODEL & FIRMWARE
+                      MODEL & GATEWAY
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      {chairConfig.model} ({chairConfig.firmware})
+                      ESP8266 NodeMCU v3
                     </Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="caption" color="text.secondary" display="block">
-                      MAC ADDRESS
+                      LOCAL IP / AP
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 700, fontFamily: 'monospace' }}>
-                      {chairConfig.macAddress}
+                      {sensorData?.ip || '192.168.4.1'}
                     </Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="caption" color="text.secondary" display="block">
-                      BATTERY LEVEL
+                      WI-FI RSSI / QUALITY
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 700, color: 'success.main' }}>
-                      {chairConfig.batteryLevel}% (LiPo 3.7V)
+                      {sensorData?.rssi ? `${sensorData.rssi} dBm (Active)` : '-58 dBm (Good)'}
                     </Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="caption" color="text.secondary" display="block">
-                      SENSORS ONLINE
+                      FSR CHANNELS
                     </Typography>
                     <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                      {chairConfig.sensorCount} / 6 Array Sensors
+                      4 Multiplexed (P1-P4)
                     </Typography>
                   </Grid>
                 </Grid>
@@ -248,9 +281,22 @@ export const Settings = ({ isOnline = true, latency = 24, calibrateSensor, calib
                     </Typography>
                   </Box>
                 </Box>
-                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
-                  Last Calibrated: {calib.lastCalibrated}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
+                    Last Calibrated: {calib.lastCalibrated}
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    color="warning"
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={handleCalibrateAll}
+                    disabled={isCalibratingAll}
+                    sx={{ fontWeight: 800, borderRadius: 2 }}
+                  >
+                    {isCalibratingAll ? 'Calibrating All...' : 'Tare All Sensors'}
+                  </Button>
+                </Box>
               </Box>
 
               <Grid container spacing={2.5} sx={{ mt: 1 }}>
@@ -265,6 +311,18 @@ export const Settings = ({ isOnline = true, latency = 24, calibrateSensor, calib
                       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
                         {s.name}
                       </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, my: 0.5 }}>
+                        <Chip
+                          label={`Live: ${sensorData && sensorData[s.key] !== undefined ? sensorData[s.key] + '%' : '--'}`}
+                          size="small"
+                          sx={{
+                            bgcolor: 'rgba(198, 242, 108, 0.15)',
+                            color: '#C6F26C',
+                            fontWeight: 800,
+                            fontSize: 11,
+                          }}
+                        />
+                      </Box>
                       <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
                         Offset Drift: {s.offset > 0 ? `+${s.offset}%` : `${s.offset}%`}
                       </Typography>

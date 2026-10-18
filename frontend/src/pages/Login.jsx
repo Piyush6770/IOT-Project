@@ -22,7 +22,6 @@ import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import { ChairLogo } from '../components/ChairLogo';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -49,7 +48,7 @@ export const Login = () => {
     try {
       await login(email, password);
       navigate('/dashboard');
-    } catch (err) {
+    } catch {
       setError('Invalid credentials. Please verify email and password.');
     } finally {
       setLoading(false);

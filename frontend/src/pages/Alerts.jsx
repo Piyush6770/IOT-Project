@@ -11,19 +11,17 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import TimerIcon from '@mui/icons-material/Timer';
 import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 import ScaleIcon from '@mui/icons-material/Scale';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import SettingsIcon from '@mui/icons-material/Settings';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 
 import { alertsFeed } from '../services/mockData';
 import { api } from '../services/api';
 
-export const Alerts = () => {
+export const Alerts = ({ sensorData }) => {
   const [timeFilter, setTimeFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [alertsList, setAlertsList] = useState(alertsFeed);
@@ -51,6 +49,52 @@ export const Alerts = () => {
     };
     fetchRealAlerts();
   }, []);
+
+  // Real-time hardware event injection (break reminders, posture drifts)
+  React.useEffect(() => {
+    if (!sensorData) return;
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    if (sensorData.breakReminderActive) {
+      const alertId = `LIVE-BREAK-${timeStr.slice(0, 5)}`;
+      setAlertsList((prev) => {
+        if (prev.some((a) => a.id === alertId)) return prev;
+        return [
+          {
+            id: alertId,
+            title: 'Break Reminder: Sedentary Limit Reached',
+            description: `ESP8266 triggered sedentary threshold (${sensorData.sittingDurationMinutes || 1} min sitting). Hardware RGB LED turned RED.`,
+            severity: 'high',
+            timestamp: timeStr,
+            timeframe: 'today',
+            icon: 'Timer',
+            recommendation: 'Stand up and perform standing calf raises for 2 minutes to restore venous return.',
+          },
+          ...prev,
+        ];
+      });
+    }
+
+    if (sensorData.posture && ['Slouching', 'Left Lean', 'Right Lean'].includes(sensorData.posture)) {
+      const alertId = `LIVE-DRIFT-${sensorData.posture}-${timeStr.slice(0, 5)}`;
+      setAlertsList((prev) => {
+        if (prev.some((a) => a.id === alertId)) return prev;
+        return [
+          {
+            id: alertId,
+            title: `${sensorData.posture} Posture Imbalance Detected`,
+            description: `Four-quadrant FSR load distribution shifted beyond healthy clinical threshold (${sensorData.posture}).`,
+            severity: 'medium',
+            timestamp: timeStr,
+            timeframe: 'today',
+            icon: 'Accessibility',
+            recommendation: 'Re-align pelvis against backrest and distribute weight symmetrically across both ischial tuberosities.',
+          },
+          ...prev,
+        ];
+      });
+    }
+  }, [sensorData?.breakReminderActive, sensorData?.posture, sensorData?.sittingDurationMinutes]);
 
   const getAlertIcon = (iconName, severity) => {
     const color = severity === 'high' ? '#FF5B6E' : severity === 'medium' ? '#FFB020' : '#2FBFA0';
@@ -96,9 +140,30 @@ export const Alerts = () => {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', mb: 3.5, flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography variant="h2" sx={{ fontWeight: 900, color: 'text.primary', letterSpacing: '-0.03em' }}>
-            Alert Feed & Activity
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+            <Typography variant="h2" sx={{ fontWeight: 900, color: 'text.primary', letterSpacing: '-0.03em' }}>
+              Alert Feed & Activity
+            </Typography>
+            {sensorData && (
+              <Chip
+                label={sensorData.breakReminderActive ? '🔴 BREAK ALERT ACTIVE' : sensorData.isOccupied ? '🟢 OCCUPIED' : '⚪ VACANT'}
+                sx={{
+                  bgcolor: sensorData.breakReminderActive
+                    ? 'rgba(255, 91, 110, 0.2)'
+                    : sensorData.isOccupied
+                    ? 'rgba(47, 191, 160, 0.15)'
+                    : 'rgba(255, 255, 255, 0.05)',
+                  color: sensorData.breakReminderActive
+                    ? '#FF5B6E'
+                    : sensorData.isOccupied
+                    ? '#2FBFA0'
+                    : '#9A9AA5',
+                  fontWeight: 900,
+                  fontSize: 11,
+                }}
+              />
+            )}
+          </Box>
           <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mt: 0.5 }}>
             Sedentary Thresholds, Posture Drifts & Clinical Recommendations
           </Typography>

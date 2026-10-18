@@ -4,13 +4,25 @@
 #include <Arduino.h>
 
 // ==============================================================================
-// WiFi Configuration
+// WiFi Station Configuration (Connects to existing router/hotspot)
 // ==============================================================================
 constexpr char WIFI_SSID[] = "Samsung F23";
 constexpr char WIFI_PASSWORD[] = "30042006";
 
-constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 25000;
+constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 10000;
 constexpr unsigned long WIFI_RECONNECT_INTERVAL_MS = 5000;
+
+// ==============================================================================
+// WiFi Access Point (AP Mode) Configuration - Direct Laptop WiFi Connection
+// The ESP8266 broadcasts this network so you can connect your laptop directly!
+// ==============================================================================
+constexpr bool WIFI_AP_MODE_ENABLED = true;
+constexpr char WIFI_AP_SSID[] = "ChairSense-WiFi";
+constexpr char WIFI_AP_PASSWORD[] = "chairsense123"; // 8+ characters for WPA2 PSK
+constexpr uint8_t WIFI_AP_CHANNEL = 1;
+constexpr bool WIFI_AP_HIDDEN = false;
+constexpr uint8_t WIFI_AP_MAX_CONN = 4;
+constexpr char WIFI_AP_IP[] = "192.168.4.1";
 
 // ==============================================================================
 // Device Identification
@@ -57,10 +69,37 @@ constexpr uint8_t MUX_PIN_S3 = D6; // GPIO12
 // Analog Input Pin connected to MUX SIG (COM) Output
 constexpr uint8_t MUX_ANALOG_PIN = A0; // ADC0 (0-3.3V mapped 0-1023)
 
-// Sensor Channel Mapping on CD74HC4067
-constexpr uint8_t MUX_CH_FSR1 = 0; // Channel C0 -> FSR 1
-constexpr uint8_t MUX_CH_FSR2 = 1; // Channel C1 -> FSR 2
-constexpr uint8_t MUX_CH_FSR3 = 2; // Channel C2 -> FSR 3
-constexpr uint8_t MUX_CH_FSR4 = 3; // Channel C3 -> FSR 4
+// Sensor Channel Mapping on CD74HC4067 (Authoritative Project Pinout)
+// FSR1: Seat Left  -> Channel C0 (Address: 0000)
+// FSR2: Seat Right -> Channel C1 (Address: 0001)
+// FSR3: Back Left  -> Channel C2 (Address: 0010)
+// FSR4: Back Right -> Channel C3 (Address: 0011)
+constexpr uint8_t MUX_CH_FSR1 = 0; // Channel C0 -> FSR 1 (seat_left)
+constexpr uint8_t MUX_CH_FSR2 = 1; // Channel C1 -> FSR 2 (seat_right)
+constexpr uint8_t MUX_CH_FSR3 = 2; // Channel C2 -> FSR 3 (back_left)
+constexpr uint8_t MUX_CH_FSR4 = 3; // Channel C3 -> FSR 4 (back_right)
+
+// Sensor Thresholds & Filtering
+constexpr int OCCUPANCY_RAW_THRESHOLD = 30; // Min ADC reading to register chair occupancy
+constexpr int NOISE_FLOOR_ADC = 10;          // ADC noise cutoff floor
+
+// ==============================================================================
+// Alert & Actuator Pin Definitions (RGB LED & Active Buzzer)
+// Authoritative Pinout for Common-Cathode RGB LED:
+// - Red LED         : D7 (GPIO13) through 220-330 ohm resistor
+// - Green LED       : D0 (GPIO16) through 220-330 ohm resistor
+// - Blue LED        : D4 (GPIO2)  through 220-330 ohm resistor
+// - Common Cathode  : GND
+// ==============================================================================
+constexpr bool BUZZER_ENABLED = false;   // Buzzer disabled when using D7 for Red LED
+constexpr uint8_t BUZZER_PIN = D8;       // GPIO15 (Alternate pin if buzzer is ever attached)
+
+constexpr bool RGB_LED_ENABLED = true;   // Common-Cathode RGB LED enabled
+constexpr uint8_t LED_RED_PIN = D7;      // GPIO13 (Red pin per user schematic)
+constexpr uint8_t LED_GREEN_PIN = D0;    // GPIO16 (Green pin per user schematic)
+constexpr uint8_t LED_BLUE_PIN = D4;     // GPIO2  (Blue pin per user schematic)
+
+// Occupancy Alert Timing: Green for 10s of continuous sitting, then Red
+constexpr unsigned long OCCUPANCY_ALERT_DELAY_MS = 10000; // 10,000ms (10 seconds)
 
 #endif // CHAIRSENSE_CONFIG_H
