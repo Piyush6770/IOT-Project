@@ -279,9 +279,17 @@ export const useLiveTelemetry = (chairId = 'CHAIR001') => {
       if (!isStreaming) return;
 
       const token = getStoredToken() || 'mock-jwt-token-9042';
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsHost = window.location.host;
-      const wsUrl = `${wsProtocol}//${wsHost}/ws/live?token=${encodeURIComponent(token)}`;
+      let wsUrl;
+      const configuredApi = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://iot-project-7y0j.onrender.com' : '');
+      if (configuredApi) {
+        const cleanHost = configuredApi.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+        const wsProtocol = configuredApi.startsWith('https') ? 'wss:' : 'ws:';
+        wsUrl = `${wsProtocol}//${cleanHost}/ws/live?token=${encodeURIComponent(token)}`;
+      } else {
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsHost = window.location.host;
+        wsUrl = `${wsProtocol}//${wsHost}/ws/live?token=${encodeURIComponent(token)}`;
+      }
 
       try {
         const ws = new WebSocket(wsUrl);

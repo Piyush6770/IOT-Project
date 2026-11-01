@@ -3,7 +3,9 @@
  * Connects frontend directly to FastAPI backend endpoints with real JWT authentication & telemetry.
  */
 
-const API_BASE = '/api/v1';
+const RAW_BACKEND_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? 'https://iot-project-7y0j.onrender.com' : '');
+export const BACKEND_URL = RAW_BACKEND_URL.replace(/\/+$/, '');
+const API_BASE = `${BACKEND_URL}/api/v1`;
 
 // Token helper
 export const getStoredToken = () => localStorage.getItem('smartchair_jwt_token');
@@ -222,15 +224,15 @@ export const api = {
   // Direct Hardware & MQTT Verification
   // ==========================================
   async getDeviceInfo(deviceId = 'CHAIR001') {
-    return await apiRequest(`/device/${encodeURIComponent(deviceId)}`);
+    return await apiRequest(`${BACKEND_URL}/device/${encodeURIComponent(deviceId)}`);
   },
 
   async getMqttStatus() {
-    return await apiRequest('/mqtt/status');
+    return await apiRequest(`${BACKEND_URL}/mqtt/status`);
   },
 
   async getHealth() {
-    return await apiRequest('/health');
+    return await apiRequest(`${BACKEND_URL}/health`);
   },
 
   async toggleChairStream(chairCode, enabled) {
