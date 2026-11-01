@@ -40,3 +40,18 @@ firmware/**/broker/data/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Research paper files and assets
+IEEE_Research_Paper_ChairSense.*
+build_ieee_paper.py
+generate_paper_figures.py
+paperprompt.md
+research paper code*
+research_paper_code.*
+paper_assets/
+paper_assets*.zip
+extracted_references/
+extracted_references.zip
+IOT references.zip
+firmware/ChairSense/similarity TS.pdf
+*.pdf
